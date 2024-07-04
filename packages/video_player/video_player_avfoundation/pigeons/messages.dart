@@ -21,6 +21,7 @@ class CreationOptions {
   CreationOptions({required this.httpHeaders});
   String? asset;
   String? uri;
+  String? audioUri;
   String? packageName;
   String? formatHint;
   Map<String?, String?> httpHeaders;

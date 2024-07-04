@@ -54,6 +54,7 @@ class AVFoundationVideoPlayer extends VideoPlayerPlatform {
       asset: asset,
       packageName: packageName,
       uri: uri,
+      audioUri: dataSource.audioUri,
       httpHeaders: httpHeaders,
       formatHint: formatHint,
     );

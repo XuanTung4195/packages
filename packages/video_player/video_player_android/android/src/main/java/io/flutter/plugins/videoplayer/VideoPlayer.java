@@ -9,6 +9,7 @@ import static androidx.media3.common.Player.REPEAT_MODE_OFF;
 
 import android.content.Context;
 import android.view.Surface;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
@@ -24,8 +25,15 @@ import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-import io.flutter.view.TextureRegistry;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
+
+import java.util.List;
 import java.util.Map;
+
+import io.flutter.plugins.videoplayer.custom.BuildDataSourceHelper;
+import io.flutter.plugins.videoplayer.custom.PlayerDataSource;
+import io.flutter.view.TextureRegistry;
 
 final class VideoPlayer {
   private static final String FORMAT_SS = "ss";
@@ -46,12 +54,16 @@ final class VideoPlayer {
   private final VideoPlayerOptions options;
 
   private final DefaultHttpDataSource.Factory httpDataSourceFactory;
+  private PlayerDataSource playerDataSource;
 
+  @OptIn(markerClass = UnstableApi.class)
   VideoPlayer(
       Context context,
       VideoPlayerCallbacks events,
       TextureRegistry.SurfaceTextureEntry textureEntry,
       String dataSource,
+      String audioDataSource,
+      List<Map<String, String>> extraDatasource,
       String formatHint,
       @NonNull Map<String, String> httpHeaders,
       VideoPlayerOptions options) {
@@ -59,18 +71,23 @@ final class VideoPlayer {
     this.textureEntry = textureEntry;
     this.options = options;
 
-    MediaItem mediaItem =
-        new MediaItem.Builder()
-            .setUri(dataSource)
-            .setMimeType(mimeFromFormatHint(formatHint))
-            .build();
-
     httpDataSourceFactory = new DefaultHttpDataSource.Factory();
     configureHttpDataSourceFactory(httpHeaders);
 
     ExoPlayer exoPlayer = buildExoPlayer(context, httpDataSourceFactory);
 
-    exoPlayer.setMediaItem(mediaItem);
+    if (extraDatasource == null || extraDatasource.isEmpty()) {
+      MediaItem mediaItem = new MediaItem.Builder()
+              .setUri(dataSource)
+              .setMimeType(mimeFromFormatHint(formatHint))
+              .build();
+      exoPlayer.setMediaItem(mediaItem);
+    } else {
+      playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
+      MediaSource mediaSource = BuildDataSourceHelper.getMediaSource(playerDataSource, extraDatasource);
+      exoPlayer.setMediaSource(mediaSource);
+    }
+
     exoPlayer.prepare();
 
     setUpVideoPlayer(exoPlayer);
@@ -93,7 +110,10 @@ final class VideoPlayer {
   }
 
   @VisibleForTesting
+  @UnstableApi
   public void configureHttpDataSourceFactory(@NonNull Map<String, String> httpHeaders) {
+    httpDataSourceFactory.setConnectTimeoutMs(10 * 1000);
+    httpDataSourceFactory.setReadTimeoutMs(15 * 1000);
     final boolean httpHeadersNotEmpty = !httpHeaders.isEmpty();
     final String userAgent =
         httpHeadersNotEmpty && httpHeaders.containsKey(USER_AGENT)
@@ -167,6 +187,7 @@ final class VideoPlayer {
   }
 
   @NonNull
+  @UnstableApi
   private static ExoPlayer buildExoPlayer(
       Context context, DataSource.Factory baseDataSourceFactory) {
     DataSource.Factory dataSourceFactory =

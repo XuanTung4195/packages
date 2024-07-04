@@ -55,6 +55,8 @@ class AndroidVideoPlayer extends VideoPlayerPlatform {
       asset: asset,
       packageName: packageName,
       uri: uri,
+      audioUri: dataSource.audioUri,
+      extraDatasource: dataSource.extraDatasource,
       httpHeaders: httpHeaders,
       formatHint: formatHint,
     );

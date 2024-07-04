@@ -46,6 +46,8 @@ class CreateMessage {
   CreateMessage({required this.httpHeaders});
   String? asset;
   String? uri;
+  String? audioUri;
+  List<Map<String?, String?>?>? extraDatasource;
   String? packageName;
   String? formatHint;
   Map<String?, String?> httpHeaders;

@@ -272,6 +272,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         dataSourceType = DataSourceType.asset,
         formatHint = null,
         httpHeaders = const <String, String>{},
+        audioDataSource = null,
+        extraDatasource = null,
         super(const VideoPlayerValue(duration: Duration.zero));
 
   /// Constructs a [VideoPlayerController] playing a network video.
@@ -287,6 +289,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   VideoPlayerController.network(
     this.dataSource, {
     this.formatHint,
+    this.audioDataSource,
+    this.extraDatasource,
     Future<ClosedCaptionFile>? closedCaptionFile,
     this.videoPlayerOptions,
     this.httpHeaders = const <String, String>{},
@@ -306,12 +310,15 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// for the request to the [dataSource].
   VideoPlayerController.networkUrl(
     Uri url, {
+    Uri? audio,
+    this.extraDatasource,
     this.formatHint,
     Future<ClosedCaptionFile>? closedCaptionFile,
     this.videoPlayerOptions,
     this.httpHeaders = const <String, String>{},
   })  : _closedCaptionFileFuture = closedCaptionFile,
         dataSource = url.toString(),
+        audioDataSource = audio?.toString(),
         dataSourceType = DataSourceType.network,
         package = null,
         super(const VideoPlayerValue(duration: Duration.zero));
@@ -329,6 +336,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         dataSourceType = DataSourceType.file,
         package = null,
         formatHint = null,
+        audioDataSource = null,
+        extraDatasource = null,
         super(const VideoPlayerValue(duration: Duration.zero));
 
   /// Constructs a [VideoPlayerController] playing a video from a contentUri.
@@ -345,11 +354,16 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         package = null,
         formatHint = null,
         httpHeaders = const <String, String>{},
+        audioDataSource = null,
+        extraDatasource = null,
         super(const VideoPlayerValue(duration: Duration.zero));
 
   /// The URI to the video file. This will be in different formats depending on
   /// the [DataSourceType] of the original video.
   final String dataSource;
+
+  final String? audioDataSource;
+  final List<Map<String, String>>? extraDatasource;
 
   /// HTTP headers used for the request to the [dataSource].
   /// Only for [VideoPlayerController.network].
@@ -410,6 +424,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         dataSourceDescription = DataSource(
           sourceType: DataSourceType.network,
           uri: dataSource,
+          audioUri: audioDataSource,
+          extraDatasource: extraDatasource,
           formatHint: formatHint,
           httpHeaders: httpHeaders,
         );
