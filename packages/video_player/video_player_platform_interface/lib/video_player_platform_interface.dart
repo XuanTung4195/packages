@@ -112,6 +112,14 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   Future<void> setWebOptions(int textureId, VideoPlayerWebOptions options) {
     throw UnimplementedError('setWebOptions() has not been implemented.');
   }
+
+  Future<void> setVideoResolution(int textureId, int width, int height) {
+    return Future.value();
+  }
+
+  Future<List<VideoResolution>> getVideoResolutions(int textureId) {
+    return Future.value([]);
+  }
 }
 
 class _PlaceholderImplementation extends VideoPlayerPlatform {}
@@ -484,4 +492,10 @@ class VideoPlayerWebOptionsControls {
 
     return controlsList.join(' ');
   }
+}
+
+class VideoResolution {
+  VideoResolution(this.width, this.height);
+  int width;
+  int height;
 }

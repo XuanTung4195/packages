@@ -38,8 +38,14 @@ class _TestHostVideoPlayerApiCodec extends StandardMessageCodec {
     } else if (value is TextureMessage) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    } else if (value is VolumeMessage) {
+    } else if (value is VideoResolutionData) {
       buffer.putUint8(135);
+      writeValue(buffer, value.encode());
+    } else if (value is VideoResolutionMessage) {
+      buffer.putUint8(136);
+      writeValue(buffer, value.encode());
+    } else if (value is VolumeMessage) {
+      buffer.putUint8(137);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -64,6 +70,10 @@ class _TestHostVideoPlayerApiCodec extends StandardMessageCodec {
       case 134: 
         return TextureMessage.decode(readValue(buffer)!);
       case 135: 
+        return VideoResolutionData.decode(readValue(buffer)!);
+      case 136: 
+        return VideoResolutionMessage.decode(readValue(buffer)!);
+      case 137: 
         return VolumeMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -98,6 +108,10 @@ abstract class TestHostVideoPlayerApi {
   void setMixWithOthers(MixWithOthersMessage msg);
 
   void changeDataSource(SetDataSourceMessage msg);
+
+  void setVideoResolution(VideoResolutionMessage msg);
+
+  List<VideoResolutionData?> getVideoResolutions(TextureMessage msg);
 
   static void setup(TestHostVideoPlayerApi? api, {BinaryMessenger? binaryMessenger}) {
     {
@@ -320,6 +334,44 @@ abstract class TestHostVideoPlayerApi {
               'Argument for dev.flutter.pigeon.AndroidVideoPlayerApi.changeDataSource was null, expected non-null SetDataSourceMessage.');
           api.changeDataSource(arg_msg!);
           return <Object?>[];
+        });
+      }
+    }
+    {
+      final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.AndroidVideoPlayerApi.setVideoResolution', codec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        _testBinaryMessengerBinding!.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(channel, null);
+      } else {
+        _testBinaryMessengerBinding!.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(channel, (Object? message) async {
+          assert(message != null,
+          'Argument for dev.flutter.pigeon.AndroidVideoPlayerApi.setVideoResolution was null.');
+          final List<Object?> args = (message as List<Object?>?)!;
+          final VideoResolutionMessage? arg_msg = (args[0] as VideoResolutionMessage?);
+          assert(arg_msg != null,
+              'Argument for dev.flutter.pigeon.AndroidVideoPlayerApi.setVideoResolution was null, expected non-null VideoResolutionMessage.');
+          api.setVideoResolution(arg_msg!);
+          return <Object?>[];
+        });
+      }
+    }
+    {
+      final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.AndroidVideoPlayerApi.getVideoResolutions', codec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        _testBinaryMessengerBinding!.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(channel, null);
+      } else {
+        _testBinaryMessengerBinding!.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(channel, (Object? message) async {
+          assert(message != null,
+          'Argument for dev.flutter.pigeon.AndroidVideoPlayerApi.getVideoResolutions was null.');
+          final List<Object?> args = (message as List<Object?>?)!;
+          final TextureMessage? arg_msg = (args[0] as TextureMessage?);
+          assert(arg_msg != null,
+              'Argument for dev.flutter.pigeon.AndroidVideoPlayerApi.getVideoResolutions was null, expected non-null TextureMessage.');
+          final List<VideoResolutionData?> output = api.getVideoResolutions(arg_msg!);
+          return <Object?>[output];
         });
       }
     }

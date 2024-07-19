@@ -445,6 +445,16 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     await _videoPlayerPlatform.changeDataSource(_textureId, dataSourceDescription);
   }
 
+  /// setVideoResolution
+  Future<void> setVideoResolution(int width, int height) async {
+    return _videoPlayerPlatform.setVideoResolution(_textureId, width, height);
+  }
+
+  /// setVideoResolution
+  Future<List<VideoResolution>> getVideoResolutions() async {
+    return _videoPlayerPlatform.getVideoResolutions(_textureId);
+  }
+
   /// Attempts to open the given [dataSource] and load metadata about the video.
   Future<void> initialize() async {
     final bool allowBackgroundPlayback =

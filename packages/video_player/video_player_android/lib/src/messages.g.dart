@@ -254,6 +254,63 @@ class MixWithOthersMessage {
   }
 }
 
+class VideoResolutionMessage {
+  VideoResolutionMessage({
+    required this.textureId,
+    required this.width,
+    required this.height,
+  });
+
+  int textureId;
+
+  int width;
+
+  int height;
+
+  Object encode() {
+    return <Object?>[
+      textureId,
+      width,
+      height,
+    ];
+  }
+
+  static VideoResolutionMessage decode(Object result) {
+    result as List<Object?>;
+    return VideoResolutionMessage(
+      textureId: result[0]! as int,
+      width: result[1]! as int,
+      height: result[2]! as int,
+    );
+  }
+}
+
+class VideoResolutionData {
+  VideoResolutionData({
+    required this.width,
+    required this.height,
+  });
+
+  int width;
+
+  int height;
+
+  Object encode() {
+    return <Object?>[
+      width,
+      height,
+    ];
+  }
+
+  static VideoResolutionData decode(Object result) {
+    result as List<Object?>;
+    return VideoResolutionData(
+      width: result[0]! as int,
+      height: result[1]! as int,
+    );
+  }
+}
+
 class _AndroidVideoPlayerApiCodec extends StandardMessageCodec {
   const _AndroidVideoPlayerApiCodec();
   @override
@@ -279,8 +336,14 @@ class _AndroidVideoPlayerApiCodec extends StandardMessageCodec {
     } else if (value is TextureMessage) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    } else if (value is VolumeMessage) {
+    } else if (value is VideoResolutionData) {
       buffer.putUint8(135);
+      writeValue(buffer, value.encode());
+    } else if (value is VideoResolutionMessage) {
+      buffer.putUint8(136);
+      writeValue(buffer, value.encode());
+    } else if (value is VolumeMessage) {
+      buffer.putUint8(137);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -305,6 +368,10 @@ class _AndroidVideoPlayerApiCodec extends StandardMessageCodec {
       case 134: 
         return TextureMessage.decode(readValue(buffer)!);
       case 135: 
+        return VideoResolutionData.decode(readValue(buffer)!);
+      case 136: 
+        return VideoResolutionMessage.decode(readValue(buffer)!);
+      case 137: 
         return VolumeMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -593,6 +660,55 @@ class AndroidVideoPlayerApi {
       );
     } else {
       return;
+    }
+  }
+
+  Future<void> setVideoResolution(VideoResolutionMessage arg_msg) async {
+    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.AndroidVideoPlayerApi.setVideoResolution', codec,
+        binaryMessenger: _binaryMessenger);
+    final List<Object?>? replyList =
+        await channel.send(<Object?>[arg_msg]) as List<Object?>?;
+    if (replyList == null) {
+      throw PlatformException(
+        code: 'channel-error',
+        message: 'Unable to establish connection on channel.',
+      );
+    } else if (replyList.length > 1) {
+      throw PlatformException(
+        code: replyList[0]! as String,
+        message: replyList[1] as String?,
+        details: replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<List<VideoResolutionData?>> getVideoResolutions(TextureMessage arg_msg) async {
+    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.AndroidVideoPlayerApi.getVideoResolutions', codec,
+        binaryMessenger: _binaryMessenger);
+    final List<Object?>? replyList =
+        await channel.send(<Object?>[arg_msg]) as List<Object?>?;
+    if (replyList == null) {
+      throw PlatformException(
+        code: 'channel-error',
+        message: 'Unable to establish connection on channel.',
+      );
+    } else if (replyList.length > 1) {
+      throw PlatformException(
+        code: replyList[0]! as String,
+        message: replyList[1] as String?,
+        details: replyList[2],
+      );
+    } else if (replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (replyList[0] as List<Object?>?)!.cast<VideoResolutionData?>();
     }
   }
 }

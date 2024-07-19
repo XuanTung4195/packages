@@ -68,4 +68,19 @@ public class BuildDataSourceHelper {
         arraySource = mediaSources.toArray(arraySource);
         return  new MergingMediaSource(true, arraySource);
     }
+
+    @OptIn(markerClass = UnstableApi.class)
+    public static MediaSource getHlsMediaSource(PlayerDataSource playerDataSource, String sourceUrl) {
+        final MediaSource.Factory factory;
+        factory = playerDataSource.getLiveHlsMediaSourceFactory();
+        return factory.createMediaSource(
+                new MediaItem.Builder()
+                        // .setTag(metadata)
+                        .setUri(Uri.parse(sourceUrl))
+                        .setLiveConfiguration(
+                                new MediaItem.LiveConfiguration.Builder()
+                                        .setTargetOffsetMs(PlayerDataSource.LIVE_STREAM_EDGE_GAP_MILLIS)
+                                        .build())
+                        .build());
+    }
 }

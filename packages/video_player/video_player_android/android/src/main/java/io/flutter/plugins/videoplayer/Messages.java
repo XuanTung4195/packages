@@ -782,6 +782,176 @@ public class Messages {
     }
   }
 
+  /** Generated class from Pigeon that represents data sent in messages. */
+  public static final class VideoResolutionMessage {
+    private @NonNull Long textureId;
+
+    public @NonNull Long getTextureId() {
+      return textureId;
+    }
+
+    public void setTextureId(@NonNull Long setterArg) {
+      if (setterArg == null) {
+        throw new IllegalStateException("Nonnull field \"textureId\" is null.");
+      }
+      this.textureId = setterArg;
+    }
+
+    private @NonNull Long width;
+
+    public @NonNull Long getWidth() {
+      return width;
+    }
+
+    public void setWidth(@NonNull Long setterArg) {
+      if (setterArg == null) {
+        throw new IllegalStateException("Nonnull field \"width\" is null.");
+      }
+      this.width = setterArg;
+    }
+
+    private @NonNull Long height;
+
+    public @NonNull Long getHeight() {
+      return height;
+    }
+
+    public void setHeight(@NonNull Long setterArg) {
+      if (setterArg == null) {
+        throw new IllegalStateException("Nonnull field \"height\" is null.");
+      }
+      this.height = setterArg;
+    }
+
+    /** Constructor is non-public to enforce null safety; use Builder. */
+    VideoResolutionMessage() {}
+
+    public static final class Builder {
+
+      private @Nullable Long textureId;
+
+      public @NonNull Builder setTextureId(@NonNull Long setterArg) {
+        this.textureId = setterArg;
+        return this;
+      }
+
+      private @Nullable Long width;
+
+      public @NonNull Builder setWidth(@NonNull Long setterArg) {
+        this.width = setterArg;
+        return this;
+      }
+
+      private @Nullable Long height;
+
+      public @NonNull Builder setHeight(@NonNull Long setterArg) {
+        this.height = setterArg;
+        return this;
+      }
+
+      public @NonNull VideoResolutionMessage build() {
+        VideoResolutionMessage pigeonReturn = new VideoResolutionMessage();
+        pigeonReturn.setTextureId(textureId);
+        pigeonReturn.setWidth(width);
+        pigeonReturn.setHeight(height);
+        return pigeonReturn;
+      }
+    }
+
+    @NonNull
+    ArrayList<Object> toList() {
+      ArrayList<Object> toListResult = new ArrayList<Object>(3);
+      toListResult.add(textureId);
+      toListResult.add(width);
+      toListResult.add(height);
+      return toListResult;
+    }
+
+    static @NonNull VideoResolutionMessage fromList(@NonNull ArrayList<Object> list) {
+      VideoResolutionMessage pigeonResult = new VideoResolutionMessage();
+      Object textureId = list.get(0);
+      pigeonResult.setTextureId((textureId == null) ? null : ((textureId instanceof Integer) ? (Integer) textureId : (Long) textureId));
+      Object width = list.get(1);
+      pigeonResult.setWidth((width == null) ? null : ((width instanceof Integer) ? (Integer) width : (Long) width));
+      Object height = list.get(2);
+      pigeonResult.setHeight((height == null) ? null : ((height instanceof Integer) ? (Integer) height : (Long) height));
+      return pigeonResult;
+    }
+  }
+
+  /** Generated class from Pigeon that represents data sent in messages. */
+  public static final class VideoResolutionData {
+    private @NonNull Long width;
+
+    public @NonNull Long getWidth() {
+      return width;
+    }
+
+    public void setWidth(@NonNull Long setterArg) {
+      if (setterArg == null) {
+        throw new IllegalStateException("Nonnull field \"width\" is null.");
+      }
+      this.width = setterArg;
+    }
+
+    private @NonNull Long height;
+
+    public @NonNull Long getHeight() {
+      return height;
+    }
+
+    public void setHeight(@NonNull Long setterArg) {
+      if (setterArg == null) {
+        throw new IllegalStateException("Nonnull field \"height\" is null.");
+      }
+      this.height = setterArg;
+    }
+
+    /** Constructor is non-public to enforce null safety; use Builder. */
+    VideoResolutionData() {}
+
+    public static final class Builder {
+
+      private @Nullable Long width;
+
+      public @NonNull Builder setWidth(@NonNull Long setterArg) {
+        this.width = setterArg;
+        return this;
+      }
+
+      private @Nullable Long height;
+
+      public @NonNull Builder setHeight(@NonNull Long setterArg) {
+        this.height = setterArg;
+        return this;
+      }
+
+      public @NonNull VideoResolutionData build() {
+        VideoResolutionData pigeonReturn = new VideoResolutionData();
+        pigeonReturn.setWidth(width);
+        pigeonReturn.setHeight(height);
+        return pigeonReturn;
+      }
+    }
+
+    @NonNull
+    ArrayList<Object> toList() {
+      ArrayList<Object> toListResult = new ArrayList<Object>(2);
+      toListResult.add(width);
+      toListResult.add(height);
+      return toListResult;
+    }
+
+    static @NonNull VideoResolutionData fromList(@NonNull ArrayList<Object> list) {
+      VideoResolutionData pigeonResult = new VideoResolutionData();
+      Object width = list.get(0);
+      pigeonResult.setWidth((width == null) ? null : ((width instanceof Integer) ? (Integer) width : (Long) width));
+      Object height = list.get(1);
+      pigeonResult.setHeight((height == null) ? null : ((height instanceof Integer) ? (Integer) height : (Long) height));
+      return pigeonResult;
+    }
+  }
+
   private static class AndroidVideoPlayerApiCodec extends StandardMessageCodec {
     public static final AndroidVideoPlayerApiCodec INSTANCE = new AndroidVideoPlayerApiCodec();
 
@@ -805,6 +975,10 @@ public class Messages {
         case (byte) 134:
           return TextureMessage.fromList((ArrayList<Object>) readValue(buffer));
         case (byte) 135:
+          return VideoResolutionData.fromList((ArrayList<Object>) readValue(buffer));
+        case (byte) 136:
+          return VideoResolutionMessage.fromList((ArrayList<Object>) readValue(buffer));
+        case (byte) 137:
           return VolumeMessage.fromList((ArrayList<Object>) readValue(buffer));
         default:
           return super.readValueOfType(type, buffer);
@@ -834,8 +1008,14 @@ public class Messages {
       } else if (value instanceof TextureMessage) {
         stream.write(134);
         writeValue(stream, ((TextureMessage) value).toList());
-      } else if (value instanceof VolumeMessage) {
+      } else if (value instanceof VideoResolutionData) {
         stream.write(135);
+        writeValue(stream, ((VideoResolutionData) value).toList());
+      } else if (value instanceof VideoResolutionMessage) {
+        stream.write(136);
+        writeValue(stream, ((VideoResolutionMessage) value).toList());
+      } else if (value instanceof VolumeMessage) {
+        stream.write(137);
         writeValue(stream, ((VolumeMessage) value).toList());
       } else {
         super.writeValue(stream, value);
@@ -871,6 +1051,11 @@ public class Messages {
     void setMixWithOthers(@NonNull MixWithOthersMessage msg);
 
     void changeDataSource(@NonNull SetDataSourceMessage msg);
+
+    void setVideoResolution(@NonNull VideoResolutionMessage msg);
+
+    @NonNull 
+    List<VideoResolutionData> getVideoResolutions(@NonNull TextureMessage msg);
 
     /** The codec used by AndroidVideoPlayerApi. */
     static @NonNull MessageCodec<Object> getCodec() {
@@ -1153,6 +1338,54 @@ public class Messages {
                 try {
                   api.changeDataSource(msgArg);
                   wrapped.add(0, null);
+                }
+ catch (Throwable exception) {
+                  ArrayList<Object> wrappedError = wrapError(exception);
+                  wrapped = wrappedError;
+                }
+                reply.reply(wrapped);
+              });
+        } else {
+          channel.setMessageHandler(null);
+        }
+      }
+      {
+        BasicMessageChannel<Object> channel =
+            new BasicMessageChannel<>(
+                binaryMessenger, "dev.flutter.pigeon.AndroidVideoPlayerApi.setVideoResolution", getCodec());
+        if (api != null) {
+          channel.setMessageHandler(
+              (message, reply) -> {
+                ArrayList<Object> wrapped = new ArrayList<Object>();
+                ArrayList<Object> args = (ArrayList<Object>) message;
+                VideoResolutionMessage msgArg = (VideoResolutionMessage) args.get(0);
+                try {
+                  api.setVideoResolution(msgArg);
+                  wrapped.add(0, null);
+                }
+ catch (Throwable exception) {
+                  ArrayList<Object> wrappedError = wrapError(exception);
+                  wrapped = wrappedError;
+                }
+                reply.reply(wrapped);
+              });
+        } else {
+          channel.setMessageHandler(null);
+        }
+      }
+      {
+        BasicMessageChannel<Object> channel =
+            new BasicMessageChannel<>(
+                binaryMessenger, "dev.flutter.pigeon.AndroidVideoPlayerApi.getVideoResolutions", getCodec());
+        if (api != null) {
+          channel.setMessageHandler(
+              (message, reply) -> {
+                ArrayList<Object> wrapped = new ArrayList<Object>();
+                ArrayList<Object> args = (ArrayList<Object>) message;
+                TextureMessage msgArg = (TextureMessage) args.get(0);
+                try {
+                  List<VideoResolutionData> output = api.getVideoResolutions(msgArg);
+                  wrapped.add(0, output);
                 }
  catch (Throwable exception) {
                   ArrayList<Object> wrappedError = wrapError(exception);

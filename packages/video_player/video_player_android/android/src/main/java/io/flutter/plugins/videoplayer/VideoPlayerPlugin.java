@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -169,6 +170,19 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
             httpHeaders,
             options
     );
+  }
+
+  @Override
+  public void setVideoResolution(@NonNull Messages.VideoResolutionMessage msg) {
+    VideoPlayer player = videoPlayers.get(msg.getTextureId());
+    player.selectResolution(msg.getWidth().intValue(), msg.getHeight().intValue());
+  }
+
+  @NonNull
+  @Override
+  public List<Messages.VideoResolutionData> getVideoResolutions(@NonNull TextureMessage msg) {
+    VideoPlayer player = videoPlayers.get(msg.getTextureId());
+    return player.getAvailableVideoResolutions();
   }
 
   public void dispose(@NonNull TextureMessage arg) {

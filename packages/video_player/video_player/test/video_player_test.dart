@@ -88,7 +88,19 @@ class FakeController extends ValueNotifier<VideoPlayerValue>
   String? get audioDataSource => null;
 
   @override
-  Map<String, String>? get extraDatasource => null;
+  List<Map<String, String>>? get extraDatasource => null;
+
+  @override
+  Future<void> changeDataSource(Uri url, {Uri? audio, List<Map<String, String>>? extraDatasource, VideoFormat? formatHint, Future<ClosedCaptionFile>? closedCaptionFile, Map<String, String> httpHeaders = const <String, String>{}}) {
+    // TODO: implement changeDataSource
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> setVideoResolution(int width, int height) {
+    // TODO: implement setVideoResolution
+    throw UnimplementedError();
+  }
 }
 
 Future<ClosedCaptionFile> _loadClosedCaption() async =>

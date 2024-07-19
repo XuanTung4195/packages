@@ -132,6 +132,23 @@ class AndroidVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
+  Future<void> setVideoResolution(int textureId, int width, int height) {
+    return _api.setVideoResolution(VideoResolutionMessage(
+      textureId: textureId,
+      width: width,
+      height: height,
+    ));
+  }
+
+  @override
+  Future<List<VideoResolution>> getVideoResolutions(int textureId) async {
+    final List<VideoResolutionData?> res = await _api.getVideoResolutions(TextureMessage(textureId: textureId));
+    return res.map((VideoResolutionData? e) {
+      return VideoResolution(e?.width ?? 0, e?.height ?? 0);
+    }).toList();
+  }
+
+  @override
   Future<void> seekTo(int textureId, Duration position) {
     return _api.seekTo(PositionMessage(
       textureId: textureId,

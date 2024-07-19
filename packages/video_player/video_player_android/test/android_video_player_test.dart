@@ -91,6 +91,17 @@ class _ApiLogger implements TestHostVideoPlayerApi {
   void changeDataSource(SetDataSourceMessage msg) {
     // TODO: implement changeDataSource
   }
+
+  @override
+  void setVideoResolution(VideoResolutionMessage msg) {
+    // TODO: implement setVideoResolution
+  }
+
+  @override
+  List<VideoResolutionData?> getVideoResolutions(TextureMessage msg) {
+    // TODO: implement getVideoResolutions
+    throw UnimplementedError();
+  }
 }
 
 void main() {
