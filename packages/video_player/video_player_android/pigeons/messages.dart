@@ -53,6 +53,16 @@ class CreateMessage {
   Map<String?, String?> httpHeaders;
 }
 
+class SetDataSourceMessage {
+  SetDataSourceMessage({required this.textureId, required this.httpHeaders});
+  int textureId;
+  String? uri;
+  String? audioUri;
+  List<Map<String?, String?>?>? extraDatasource;
+  String? formatHint;
+  Map<String?, String?> httpHeaders;
+}
+
 class MixWithOthersMessage {
   MixWithOthersMessage(this.mixWithOthers);
   bool mixWithOthers;
@@ -71,4 +81,5 @@ abstract class AndroidVideoPlayerApi {
   void seekTo(PositionMessage msg);
   void pause(TextureMessage msg);
   void setMixWithOthers(MixWithOthersMessage msg);
+  void changeDataSource(SetDataSourceMessage msg);
 }

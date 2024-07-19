@@ -53,6 +53,11 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
     throw UnimplementedError('create() has not been implemented.');
   }
 
+  /// Change the data source of the player
+  Future<void> changeDataSource(int textureId, DataSource dataSource) {
+    throw UnimplementedError('create() has not been implemented.');
+  }
+
   /// Returns a Stream of [VideoEventType]s.
   Stream<VideoEvent> videoEventsFor(int textureId) {
     throw UnimplementedError('videoEventsFor() has not been implemented.');

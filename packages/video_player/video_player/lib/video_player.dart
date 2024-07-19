@@ -402,6 +402,49 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   @visibleForTesting
   int get textureId => _textureId;
 
+  /// Change the data source of the player
+  Future<void> changeDataSource(Uri url, {
+    Uri? audio,
+    List<Map<String, String>>? extraDatasource,
+    VideoFormat? formatHint,
+    Future<ClosedCaptionFile>? closedCaptionFile,
+    Map<String, String> httpHeaders = const <String, String>{},
+  }) async {
+    final String dataSource = url.toString();
+    final String? audioDataSource = audio?.toString();
+    late DataSource dataSourceDescription;
+    const DataSourceType dataSourceType = DataSourceType.network;
+    switch (dataSourceType) {
+      case DataSourceType.asset:
+        dataSourceDescription = DataSource(
+          sourceType: DataSourceType.asset,
+          asset: dataSource,
+          package: package,
+        );
+      case DataSourceType.network:
+        dataSourceDescription = DataSource(
+          sourceType: DataSourceType.network,
+          uri: dataSource,
+          audioUri: audioDataSource,
+          extraDatasource: extraDatasource,
+          formatHint: formatHint,
+          httpHeaders: httpHeaders,
+        );
+      case DataSourceType.file:
+        dataSourceDescription = DataSource(
+          sourceType: DataSourceType.file,
+          uri: dataSource,
+          httpHeaders: httpHeaders,
+        );
+      case DataSourceType.contentUri:
+        dataSourceDescription = DataSource(
+          sourceType: DataSourceType.contentUri,
+          uri: dataSource,
+        );
+    }
+    await _videoPlayerPlatform.changeDataSource(_textureId, dataSourceDescription);
+  }
+
   /// Attempts to open the given [dataSource] and load metadata about the video.
   Future<void> initialize() async {
     final bool allowBackgroundPlayback =

@@ -93,6 +93,27 @@ final class VideoPlayer {
     setUpVideoPlayer(exoPlayer);
   }
 
+  @OptIn(markerClass = UnstableApi.class)
+  public void changeDataSource(Context context,
+                         String dataSource,
+                         String audioDataSource,
+                         List<Map<String, String>> extraDatasource,
+                         String formatHint,
+                         @NonNull Map<String, String> httpHeaders,
+                         VideoPlayerOptions options) {
+    if (extraDatasource == null || extraDatasource.isEmpty()) {
+      MediaItem mediaItem = new MediaItem.Builder()
+              .setUri(dataSource)
+              .setMimeType(mimeFromFormatHint(formatHint))
+              .build();
+      exoPlayer.setMediaItem(mediaItem);
+    } else {
+      playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
+      MediaSource mediaSource = BuildDataSourceHelper.getMediaSource(playerDataSource, extraDatasource);
+      exoPlayer.setMediaSource(mediaSource, false);
+    }
+  }
+
   // Constructor used to directly test members of this class.
   @VisibleForTesting
   VideoPlayer(

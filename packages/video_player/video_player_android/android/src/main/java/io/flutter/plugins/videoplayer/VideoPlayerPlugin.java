@@ -30,6 +30,7 @@ import io.flutter.plugins.videoplayer.Messages.PlaybackSpeedMessage;
 import io.flutter.plugins.videoplayer.Messages.PositionMessage;
 import io.flutter.plugins.videoplayer.Messages.TextureMessage;
 import io.flutter.plugins.videoplayer.Messages.VolumeMessage;
+import io.flutter.plugins.videoplayer.Messages.SetDataSourceMessage;
 import io.flutter.view.TextureRegistry;
 
 /** Android platform implementation of the VideoPlayerPlugin. */
@@ -154,6 +155,20 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
     videoPlayers.put(handle.id(), player);
 
     return new TextureMessage.Builder().setTextureId(handle.id()).build();
+  }
+
+  public void changeDataSource(@NonNull SetDataSourceMessage msg) {
+    VideoPlayer player = videoPlayers.get(msg.getTextureId());
+    Map<String, String> httpHeaders = msg.getHttpHeaders();
+    player.changeDataSource(
+            flutterState.applicationContext,
+            msg.getUri(),
+            msg.getAudioUri(),
+            msg.getExtraDatasource(),
+            msg.getFormatHint(),
+            httpHeaders,
+            options
+    );
   }
 
   public void dispose(@NonNull TextureMessage arg) {

@@ -187,6 +187,52 @@ class CreateMessage {
   }
 }
 
+class SetDataSourceMessage {
+  SetDataSourceMessage({
+    required this.textureId,
+    this.uri,
+    this.audioUri,
+    this.extraDatasource,
+    this.formatHint,
+    required this.httpHeaders,
+  });
+
+  int textureId;
+
+  String? uri;
+
+  String? audioUri;
+
+  List<Map<String?, String?>?>? extraDatasource;
+
+  String? formatHint;
+
+  Map<String?, String?> httpHeaders;
+
+  Object encode() {
+    return <Object?>[
+      textureId,
+      uri,
+      audioUri,
+      extraDatasource,
+      formatHint,
+      httpHeaders,
+    ];
+  }
+
+  static SetDataSourceMessage decode(Object result) {
+    result as List<Object?>;
+    return SetDataSourceMessage(
+      textureId: result[0]! as int,
+      uri: result[1] as String?,
+      audioUri: result[2] as String?,
+      extraDatasource: (result[3] as List<Object?>?)?.cast<Map<String?, String?>?>(),
+      formatHint: result[4] as String?,
+      httpHeaders: (result[5] as Map<Object?, Object?>?)!.cast<String?, String?>(),
+    );
+  }
+}
+
 class MixWithOthersMessage {
   MixWithOthersMessage({
     required this.mixWithOthers,
@@ -227,11 +273,14 @@ class _AndroidVideoPlayerApiCodec extends StandardMessageCodec {
     } else if (value is PositionMessage) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    } else if (value is TextureMessage) {
+    } else if (value is SetDataSourceMessage) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    } else if (value is VolumeMessage) {
+    } else if (value is TextureMessage) {
       buffer.putUint8(134);
+      writeValue(buffer, value.encode());
+    } else if (value is VolumeMessage) {
+      buffer.putUint8(135);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -252,8 +301,10 @@ class _AndroidVideoPlayerApiCodec extends StandardMessageCodec {
       case 132: 
         return PositionMessage.decode(readValue(buffer)!);
       case 133: 
-        return TextureMessage.decode(readValue(buffer)!);
+        return SetDataSourceMessage.decode(readValue(buffer)!);
       case 134: 
+        return TextureMessage.decode(readValue(buffer)!);
+      case 135: 
         return VolumeMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -504,6 +555,28 @@ class AndroidVideoPlayerApi {
   Future<void> setMixWithOthers(MixWithOthersMessage arg_msg) async {
     final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.AndroidVideoPlayerApi.setMixWithOthers', codec,
+        binaryMessenger: _binaryMessenger);
+    final List<Object?>? replyList =
+        await channel.send(<Object?>[arg_msg]) as List<Object?>?;
+    if (replyList == null) {
+      throw PlatformException(
+        code: 'channel-error',
+        message: 'Unable to establish connection on channel.',
+      );
+    } else if (replyList.length > 1) {
+      throw PlatformException(
+        code: replyList[0]! as String,
+        message: replyList[1] as String?,
+        details: replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<void> changeDataSource(SetDataSourceMessage arg_msg) async {
+    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.AndroidVideoPlayerApi.changeDataSource', codec,
         binaryMessenger: _binaryMessenger);
     final List<Object?>? replyList =
         await channel.send(<Object?>[arg_msg]) as List<Object?>?;
