@@ -120,15 +120,25 @@ final class VideoPlayer {
                          @NonNull Map<String, String> httpHeaders,
                          VideoPlayerOptions options) {
     if (extraDatasource == null || extraDatasource.isEmpty()) {
-      MediaItem mediaItem = new MediaItem.Builder()
-              .setUri(dataSource)
-              .setMimeType(mimeFromFormatHint(formatHint))
-              .build();
-      exoPlayer.setMediaItem(mediaItem);
+      if (dataSource.endsWith(".m3u8")) {
+        if (playerDataSource == null) {
+          playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
+        }
+        MediaSource mediaSource = BuildDataSourceHelper.getHlsMediaSource(playerDataSource, dataSource);
+        exoPlayer.setMediaSource(mediaSource);
+      } else {
+        MediaItem mediaItem = new MediaItem.Builder()
+                .setUri(dataSource)
+                .setMimeType(mimeFromFormatHint(formatHint))
+                .build();
+        exoPlayer.setMediaItem(mediaItem);
+      }
     } else {
       playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
       MediaSource mediaSource = BuildDataSourceHelper.getMediaSource(playerDataSource, extraDatasource);
-      exoPlayer.setMediaSource(mediaSource, false);
+      if (mediaSource != null) {
+        exoPlayer.setMediaSource(mediaSource, false);
+      }
     }
   }
 
