@@ -8,6 +8,7 @@ import static androidx.media3.common.Player.REPEAT_MODE_ALL;
 import static androidx.media3.common.Player.REPEAT_MODE_OFF;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
@@ -18,7 +19,6 @@ import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.MediaItem;
-import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.TrackGroup;
 import androidx.media3.common.util.UnstableApi;
@@ -41,63 +41,70 @@ import java.util.Objects;
 
 import io.flutter.plugins.videoplayer.custom.BuildDataSourceHelper;
 import io.flutter.plugins.videoplayer.custom.PlayerDataSource;
+import androidx.media3.exoplayer.ExoPlayer;
 import io.flutter.view.TextureRegistry;
 
 final class VideoPlayer {
-  private static final String FORMAT_SS = "ss";
-  private static final String FORMAT_DASH = "dash";
-  private static final String FORMAT_HLS = "hls";
-  private static final String FORMAT_OTHER = "other";
-
   private ExoPlayer exoPlayer;
-
   private Surface surface;
-
   private final TextureRegistry.SurfaceTextureEntry textureEntry;
-
   private final VideoPlayerCallbacks videoPlayerEvents;
-
-  private static final String USER_AGENT = "User-Agent";
-
   private final VideoPlayerOptions options;
 
-  private final DefaultHttpDataSource.Factory httpDataSourceFactory;
   private PlayerDataSource playerDataSource;
 
-  private DefaultTrackSelector trackSelector;
+  private final DefaultTrackSelector trackSelector;
+  Context context;
 
-  @OptIn(markerClass = UnstableApi.class)
-  VideoPlayer(
+  /**
+   * Creates a video player.
+   *
+   * @param context application context.
+   * @param events event callbacks.
+   * @param textureEntry texture to render to.
+   * @param asset asset to play.
+   * @param options options for playback.
+   * @return a video player instance.
+   */
+  @NonNull
+  static VideoPlayer create(
       Context context,
       VideoPlayerCallbacks events,
       TextureRegistry.SurfaceTextureEntry textureEntry,
-      String dataSource,
-      String audioDataSource,
+      VideoAsset asset,
       List<Map<String, String>> extraDatasource,
-      String formatHint,
-      @NonNull Map<String, String> httpHeaders,
       VideoPlayerOptions options) {
+    ExoPlayer.Builder builder =
+            new ExoPlayer.Builder(context).setMediaSourceFactory(asset.getMediaSourceFactory(context));
+    return new VideoPlayer(context, asset, builder, events, textureEntry, asset.getMediaItem(), extraDatasource, options);
+  }
+
+  @OptIn(markerClass = UnstableApi.class)
+  @VisibleForTesting
+  VideoPlayer(
+      Context context,
+      VideoAsset asset,
+      ExoPlayer.Builder builder,
+      VideoPlayerCallbacks events,
+      TextureRegistry.SurfaceTextureEntry textureEntry,
+      MediaItem mediaItem,
+      List<Map<String, String>> extraDatasource,
+      VideoPlayerOptions options) {
+    this.context = context;
     this.videoPlayerEvents = events;
     this.textureEntry = textureEntry;
     this.options = options;
-
-    httpDataSourceFactory = new DefaultHttpDataSource.Factory();
-    configureHttpDataSourceFactory(httpHeaders);
-
     trackSelector = new DefaultTrackSelector(context);
-
-    ExoPlayer exoPlayer = buildExoPlayer(context, httpDataSourceFactory, trackSelector);
+    builder.setTrackSelector(trackSelector);
+    ExoPlayer exoPlayer = builder.build();
 
     if (extraDatasource == null || extraDatasource.isEmpty()) {
-      if (dataSource.endsWith(".m3u8")) {
+      String dataSource = asset.assetUrl;
+      if (dataSource != null && dataSource.endsWith(".m3u8")) {
         playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
         MediaSource mediaSource = BuildDataSourceHelper.getHlsMediaSource(playerDataSource, dataSource);
         exoPlayer.setMediaSource(mediaSource);
       } else {
-        MediaItem mediaItem = new MediaItem.Builder()
-                .setUri(dataSource)
-                .setMimeType(mimeFromFormatHint(formatHint))
-                .build();
         exoPlayer.setMediaItem(mediaItem);
       }
     } else {
@@ -129,7 +136,6 @@ final class VideoPlayer {
       } else {
         MediaItem mediaItem = new MediaItem.Builder()
                 .setUri(dataSource)
-                .setMimeType(mimeFromFormatHint(formatHint))
                 .build();
         exoPlayer.setMediaItem(mediaItem);
       }
@@ -140,37 +146,6 @@ final class VideoPlayer {
         exoPlayer.setMediaSource(mediaSource, false);
       }
     }
-  }
-
-  // Constructor used to directly test members of this class.
-  @VisibleForTesting
-  VideoPlayer(
-      ExoPlayer exoPlayer,
-      VideoPlayerCallbacks events,
-      TextureRegistry.SurfaceTextureEntry textureEntry,
-      VideoPlayerOptions options,
-      DefaultHttpDataSource.Factory httpDataSourceFactory) {
-    this.videoPlayerEvents = events;
-    this.textureEntry = textureEntry;
-    this.options = options;
-    this.httpDataSourceFactory = httpDataSourceFactory;
-
-    setUpVideoPlayer(exoPlayer);
-  }
-
-  @VisibleForTesting
-  @UnstableApi
-  public void configureHttpDataSourceFactory(@NonNull Map<String, String> httpHeaders) {
-    httpDataSourceFactory.setConnectTimeoutMs(10 * 1000);
-    httpDataSourceFactory.setReadTimeoutMs(15 * 1000);
-    final boolean httpHeadersNotEmpty = !httpHeaders.isEmpty();
-    final String userAgent =
-        httpHeadersNotEmpty && httpHeaders.containsKey(USER_AGENT)
-            ? httpHeaders.get(USER_AGENT)
-            : "ExoPlayer";
-
-    unstableUpdateDataSourceFactory(
-        httpDataSourceFactory, httpHeaders, userAgent, httpHeadersNotEmpty);
   }
 
   private void setUpVideoPlayer(ExoPlayer exoPlayer) {
@@ -208,7 +183,7 @@ final class VideoPlayer {
     float bracketedValue = (float) Math.max(0.0, Math.min(1.0, value));
     exoPlayer.setVolume(bracketedValue);
   }
-int count = 0;
+
   void setPlaybackSpeed(double value) {
     // We do not need to consider pitch and skipSilence for now as we do not handle them and
     // therefore never diverge from the default values.
@@ -232,49 +207,6 @@ int count = 0;
     }
     if (exoPlayer != null) {
       exoPlayer.release();
-    }
-  }
-
-  @NonNull
-  @UnstableApi
-  private static ExoPlayer buildExoPlayer(
-      Context context, DataSource.Factory baseDataSourceFactory, TrackSelector trackSelector) {
-    DataSource.Factory dataSourceFactory =
-        new DefaultDataSource.Factory(context, baseDataSourceFactory);
-    DefaultMediaSourceFactory mediaSourceFactory =
-        new DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory);
-    return new ExoPlayer.Builder(context).setTrackSelector(trackSelector).setMediaSourceFactory(mediaSourceFactory).build();
-  }
-
-  @Nullable
-  private static String mimeFromFormatHint(@Nullable String formatHint) {
-    if (formatHint == null) {
-      return null;
-    }
-    switch (formatHint) {
-      case FORMAT_SS:
-        return MimeTypes.APPLICATION_SS;
-      case FORMAT_DASH:
-        return MimeTypes.APPLICATION_MPD;
-      case FORMAT_HLS:
-        return MimeTypes.APPLICATION_M3U8;
-      case FORMAT_OTHER:
-      default:
-        return null;
-    }
-  }
-
-  // TODO: migrate to stable API, see https://github.com/flutter/flutter/issues/147039
-  @OptIn(markerClass = UnstableApi.class)
-  private static void unstableUpdateDataSourceFactory(
-      DefaultHttpDataSource.Factory factory,
-      @NonNull Map<String, String> httpHeaders,
-      String userAgent,
-      boolean httpHeadersNotEmpty) {
-    factory.setUserAgent(userAgent).setAllowCrossProtocolRedirects(true);
-
-    if (httpHeadersNotEmpty) {
-      factory.setDefaultRequestProperties(httpHeaders);
     }
   }
 
