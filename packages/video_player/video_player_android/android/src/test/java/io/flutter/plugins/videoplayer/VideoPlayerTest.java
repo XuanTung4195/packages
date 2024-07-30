@@ -64,7 +64,7 @@ public final class VideoPlayerTest {
 
   private VideoPlayer createVideoPlayer(VideoPlayerOptions options) {
     return new VideoPlayer(
-        mockBuilder, mockEvents, mockTexture, fakeVideoAsset.getMediaItem(), options);
+            null, null, mockBuilder, mockEvents, mockTexture, fakeVideoAsset.getMediaItem(), null, options);
   }
 
   @Test

@@ -39,6 +39,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ForwardingMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
+import com.google.common.io.ByteStreams;
 import com.google.common.net.HttpHeaders;
 
 import java.io.IOException;
@@ -375,7 +376,7 @@ public final class YoutubeHttpDataSource extends BaseDataSource implements HttpD
             byte[] errorResponseBody;
             try {
                 errorResponseBody = errorStream != null
-                        ? Util.toByteArray(errorStream)
+                        ? ByteStreams.toByteArray(errorStream)
                         : Util.EMPTY_BYTE_ARRAY;
             } catch (final IOException e) {
                 errorResponseBody = Util.EMPTY_BYTE_ARRAY;
