@@ -246,6 +246,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                 displayLink:(FVPDisplayLink *)displayLink
                 httpHeaders:(nonnull NSDictionary<NSString *, NSString *> *)headers
                   avFactory:(id<FVPAVFactory>)avFactory
+                extraOption:(NSDictionary<NSString *, id>*)extraOption
                   registrar:(NSObject<FlutterPluginRegistrar> *)registrar {
   NSDictionary<NSString *, id> *options = nil;
   if ([headers count] != 0) {
@@ -253,6 +254,20 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   }
   AVURLAsset *urlAsset = [AVURLAsset URLAssetWithURL:url options:options];
   AVPlayerItem *item = [AVPlayerItem playerItemWithAsset:urlAsset];
+  if (extraOption != nil) {
+      id bitrate = extraOption[@"bitrate"];
+      id width = extraOption[@"width"];
+      id height = extraOption[@"height"];
+      if ([bitrate isKindOfClass:[NSNumber class]]
+          && [width isKindOfClass:[NSNumber class]]
+          && [height isKindOfClass:[NSNumber class]]) {
+          NSInteger _bitrate = [bitrate integerValue];
+          NSInteger _width = [width integerValue];
+          NSInteger _height = [height integerValue];
+          item.preferredPeakBitRate = _bitrate;
+          item.preferredMaximumResolution = CGSizeMake(_width, _height);
+      }
+  }
   return [self initWithPlayerItem:item
                      frameUpdater:frameUpdater
                       displayLink:(FVPDisplayLink *)displayLink
@@ -753,6 +768,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                                      displayLink:displayLink
                                      httpHeaders:options.httpHeaders
                                        avFactory:_avFactory
+                                     extraOption:options.extraOption
                                        registrar:self.registrar];
     return @([self onPlayerSetup:player frameUpdater:frameUpdater]);
   } else {

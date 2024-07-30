@@ -36,6 +36,7 @@ class CreationOptions {
     this.packageName,
     this.formatHint,
     required this.httpHeaders,
+    this.extraOption,
   });
 
   String? asset;
@@ -50,6 +51,8 @@ class CreationOptions {
 
   Map<String?, String?> httpHeaders;
 
+  Map<String?, Object?>? extraOption;
+
   Object encode() {
     return <Object?>[
       asset,
@@ -58,6 +61,7 @@ class CreationOptions {
       packageName,
       formatHint,
       httpHeaders,
+      extraOption,
     ];
   }
 
@@ -70,6 +74,7 @@ class CreationOptions {
       packageName: result[3] as String?,
       formatHint: result[4] as String?,
       httpHeaders: (result[5] as Map<Object?, Object?>?)!.cast<String?, String?>(),
+      extraOption: (result[6] as Map<Object?, Object?>?)?.cast<String?, Object?>(),
     );
   }
 }

@@ -145,6 +145,7 @@ class DataSource {
     this.uri,
     this.audioUri,
     this.extraDatasource,
+    this.extraOption,
     this.formatHint,
     this.asset,
     this.package,
@@ -166,6 +167,8 @@ class DataSource {
   final String? audioUri;
 
   final List<Map<String, String>>? extraDatasource;
+
+  final Map<String, Object?>? extraOption;
 
   /// **Android only**. Will override the platform's generic file format
   /// detection with whatever is set here.
@@ -398,6 +401,7 @@ class VideoPlayerOptions {
     this.mixWithOthers = false,
     this.allowBackgroundPlayback = false,
     this.webOptions,
+    this.extraOption,
   });
 
   /// Set this to true to keep playing video in background, when app goes in background.
@@ -413,6 +417,8 @@ class VideoPlayerOptions {
 
   /// Additional web controls
   final VideoPlayerWebOptions? webOptions;
+
+  final Map<String, Object?>? extraOption;
 }
 
 /// [VideoPlayerWebOptions] can be optionally used to set additional web settings

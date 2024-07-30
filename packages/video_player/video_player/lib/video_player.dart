@@ -481,6 +481,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           extraDatasource: extraDatasource,
           formatHint: formatHint,
           httpHeaders: httpHeaders,
+          extraOption: videoPlayerOptions?.extraOption,
         );
       case DataSourceType.file:
         dataSourceDescription = DataSource(
@@ -492,6 +493,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         dataSourceDescription = DataSource(
           sourceType: DataSourceType.contentUri,
           uri: dataSource,
+          extraOption: videoPlayerOptions?.extraOption,
         );
     }
 

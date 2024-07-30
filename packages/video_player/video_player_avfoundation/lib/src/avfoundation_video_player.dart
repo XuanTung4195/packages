@@ -57,6 +57,7 @@ class AVFoundationVideoPlayer extends VideoPlayerPlatform {
       audioUri: dataSource.audioUri,
       httpHeaders: httpHeaders,
       formatHint: formatHint,
+      extraOption: dataSource.extraOption
     );
 
     return _api.create(options);

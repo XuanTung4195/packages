@@ -23,13 +23,15 @@ NS_ASSUME_NONNULL_BEGIN
     audioUri:(nullable NSString *)audioUri
     packageName:(nullable NSString *)packageName
     formatHint:(nullable NSString *)formatHint
-    httpHeaders:(NSDictionary<NSString *, NSString *> *)httpHeaders;
+    httpHeaders:(NSDictionary<NSString *, NSString *> *)httpHeaders
+    extraOption:(nullable NSDictionary<NSString *, id> *)extraOption;
 @property(nonatomic, copy, nullable) NSString * asset;
 @property(nonatomic, copy, nullable) NSString * uri;
 @property(nonatomic, copy, nullable) NSString * audioUri;
 @property(nonatomic, copy, nullable) NSString * packageName;
 @property(nonatomic, copy, nullable) NSString * formatHint;
 @property(nonatomic, copy) NSDictionary<NSString *, NSString *> * httpHeaders;
+@property(nonatomic, copy, nullable) NSDictionary<NSString *, id> * extraOption;
 @end
 
 /// The codec used by FVPAVFoundationVideoPlayerApi.
