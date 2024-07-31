@@ -28,7 +28,8 @@ public class PlayerDataSource {
     static boolean DEBUG = true;
 
     public static final String USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0";
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36";
+            // "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0";
     public static final String TAG = PlayerDataSource.class.getSimpleName();
 
     public static final int LIVE_STREAM_EDGE_GAP_MILLIS = 10000;

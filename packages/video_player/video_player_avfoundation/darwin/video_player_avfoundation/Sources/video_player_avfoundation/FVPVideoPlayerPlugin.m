@@ -92,6 +92,8 @@
 // (e.g., after a seek while paused). If YES, the display link should continue to run until the next
 // frame is successfully provided.
 @property(nonatomic, assign) BOOL waitingForFrame;
+@property (nonatomic, strong) id didEnterBackgroundObserver;
+@property (nonatomic, strong) id willEnterForegroundObserver;
 
 - (instancetype)initWithURL:(NSURL *)url
                frameUpdater:(FVPFrameUpdater *)frameUpdater
@@ -131,6 +133,7 @@ static void *rateContext = &rateContext;
                displayLink:displayLink
                httpHeaders:@{}
                  avFactory:avFactory
+               extraOption:nil
                  registrar:registrar];
 }
 
@@ -325,6 +328,19 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   // for issue #1, and restore the correct width and height for issue #2.
   _playerLayer = [AVPlayerLayer playerLayerWithPlayer:_player];
   [self.flutterViewLayer addSublayer:_playerLayer];
+
+    if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
+        _playerLayer.player = nil;
+    }
+    
+    __weak typeof(self) weakSelf = self;
+    self.didEnterBackgroundObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
+        weakSelf.playerLayer.player = nil;
+    }];
+
+    self.willEnterForegroundObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
+        weakSelf.playerLayer.player = weakSelf.player;
+    }];
 
   // Configure output.
   _displayLink = displayLink;
@@ -628,6 +644,12 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 - (void)dispose {
+    if (self.didEnterBackgroundObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.didEnterBackgroundObserver];
+    }
+    if (self.willEnterForegroundObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.willEnterForegroundObserver];
+    }
   [self disposeSansEventChannel];
   [_eventChannel setStreamHandler:nil];
 }
