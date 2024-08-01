@@ -328,7 +328,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   // for issue #1, and restore the correct width and height for issue #2.
   _playerLayer = [AVPlayerLayer playerLayerWithPlayer:_player];
   [self.flutterViewLayer addSublayer:_playerLayer];
-
+#if TARGET_OS_IOS
     if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
         _playerLayer.player = nil;
     }
@@ -341,7 +341,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     self.willEnterForegroundObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
         weakSelf.playerLayer.player = weakSelf.player;
     }];
-
+#endif
   // Configure output.
   _displayLink = displayLink;
   NSDictionary *pixBuffAttributes = @{
