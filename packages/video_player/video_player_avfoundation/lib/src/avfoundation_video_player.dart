@@ -170,4 +170,10 @@ class AVFoundationVideoPlayer extends VideoPlayerPlatform {
       Duration(milliseconds: pair[1] as int),
     );
   }
+
+  @override
+  Future<int> enablePictureInPictureMode(bool enable) async {
+    return _api.enablePictureInPicture(enable);
+  }
+
 }

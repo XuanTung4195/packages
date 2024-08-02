@@ -732,6 +732,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     await _applyVolume();
   }
 
+  /// enablePictureInPictureMode
+  static Future<int> enablePictureInPictureMode(bool enable) async {
+    return _videoPlayerPlatform.enablePictureInPictureMode(enable);
+  }
+
   /// Sets the playback speed of [this].
   ///
   /// [speed] indicates a speed value with different platforms accepting

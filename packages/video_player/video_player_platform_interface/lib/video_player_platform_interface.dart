@@ -120,6 +120,11 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   Future<List<VideoResolution>> getVideoResolutions(int textureId) {
     return Future.value([]);
   }
+
+  Future<int> enablePictureInPictureMode(bool enable) async {
+    return 1;
+  }
+
 }
 
 class _PlaceholderImplementation extends VideoPlayerPlatform {}

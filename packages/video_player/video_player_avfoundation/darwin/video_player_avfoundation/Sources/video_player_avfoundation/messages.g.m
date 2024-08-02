@@ -345,4 +345,23 @@ void SetUpFVPAVFoundationVideoPlayerApiWithSuffix(id<FlutterBinaryMessenger> bin
       [channel setMessageHandler:nil];
     }
   }
+  {
+    FlutterBasicMessageChannel *channel =
+      [[FlutterBasicMessageChannel alloc]
+        initWithName:[NSString stringWithFormat:@"%@%@", @"dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.enablePictureInPicture", messageChannelSuffix]
+        binaryMessenger:binaryMessenger
+        codec:FVPAVFoundationVideoPlayerApiGetCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(enablePictureInPicture:error:)], @"FVPAVFoundationVideoPlayerApi api (%@) doesn't respond to @selector(enablePictureInPicture:error:)", api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        NSArray *args = message;
+        BOOL arg_enable = [GetNullableObjectAtIndex(args, 0) boolValue];
+        FlutterError *error;
+        NSNumber *output = [api enablePictureInPicture:arg_enable error:&error];
+        callback(wrapResult(output, error));
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
 }

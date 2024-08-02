@@ -7,6 +7,7 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <GLKit/GLKit.h>
+#import <AVKit/AVKit.h>
 
 #import "./include/video_player_avfoundation/AVAssetTrackUtils.h"
 #import "./include/video_player_avfoundation/FVPDisplayLink.h"
@@ -23,6 +24,24 @@
 @property(nonatomic, weak) AVPlayerItemVideoOutput *videoOutput;
 // The last time that has been validated as avaliable according to hasNewPixelBufferForItemTime:.
 @property(nonatomic, assign) CMTime lastKnownAvailableTime;
+@end
+
+@interface PipManager : NSObject
+
+@property (nonatomic, strong) FVPVideoPlayer *currentPlayer;
+
+@property(nonatomic, strong) AVPictureInPictureController* pipController;
+
+@property(nonatomic, strong) AVPlayerLayer* avPlayerLayer;
+
+- (void)setCurrentPlayer:(FVPVideoPlayer *)player;
+
+- (void)onPipDidStart;
+
+- (void)onPipDidStop;
+
+- (void)onDisposePlayer:(FVPVideoPlayer *)player;
+
 @end
 
 @implementation FVPFrameUpdater
@@ -82,6 +101,8 @@
 @property(nonatomic) CGAffineTransform preferredTransform;
 @property(nonatomic, readonly) BOOL disposed;
 @property(nonatomic, readonly) BOOL isPlaying;
+/// Pause the copy pixcel so the flutter texture is not updated, used when pip is enabled
+@property(nonatomic, readonly) BOOL enableFrameUpdate;
 @property(nonatomic) BOOL isLooping;
 @property(nonatomic, readonly) BOOL isInitialized;
 // The updater that drives callbacks to the engine to indicate that a new frame is ready.
@@ -285,7 +306,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                          registrar:(NSObject<FlutterPluginRegistrar> *)registrar {
   self = [super init];
   NSAssert(self, @"super init cannot be nil");
-
+  _enableFrameUpdate = YES;
   _registrar = registrar;
   _frameUpdater = frameUpdater;
 
@@ -356,6 +377,10 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   [asset loadValuesAsynchronouslyForKeys:@[ @"tracks" ] completionHandler:assetCompletionHandler];
 
   return self;
+}
+
+- (void)setEnableFrameUpdate:(BOOL)enable {
+    _enableFrameUpdate = enable;
 }
 
 - (void)observeValueForKeyPath:(NSString *)path
@@ -575,6 +600,9 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 
 - (CVPixelBufferRef)copyPixelBuffer {
   CVPixelBufferRef buffer = NULL;
+    if (!_enableFrameUpdate) {
+        return buffer;
+    }
   CMTime outputItemTime = [_videoOutput itemTimeForHostTime:CACurrentMediaTime()];
   if ([_videoOutput hasNewPixelBufferForItemTime:outputItemTime]) {
     buffer = [_videoOutput copyPixelBufferForItemTime:outputItemTime itemTimeForDisplay:NULL];
@@ -683,12 +711,14 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 
 @end
 
-@interface FVPVideoPlayerPlugin ()
+@interface FVPVideoPlayerPlugin () <AVPictureInPictureControllerDelegate>
 @property(readonly, weak, nonatomic) NSObject<FlutterTextureRegistry> *registry;
 @property(readonly, weak, nonatomic) NSObject<FlutterBinaryMessenger> *messenger;
 @property(readonly, strong, nonatomic) NSObject<FlutterPluginRegistrar> *registrar;
 @property(nonatomic, strong) id<FVPDisplayLinkFactory> displayLinkFactory;
 @property(nonatomic, strong) id<FVPAVFactory> avFactory;
+@property(nonatomic, strong) NSMutableArray* mainPlayers;
+@property(nonatomic, strong) PipManager* pipManager;
 @end
 
 @implementation FVPVideoPlayerPlugin
@@ -715,6 +745,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   _displayLinkFactory = displayLinkFactory ?: [[FVPDefaultDisplayLinkFactory alloc] init];
   _avFactory = avFactory ?: [[FVPDefaultAVFactory alloc] init];
   _playersByTextureId = [NSMutableDictionary dictionaryWithCapacity:1];
+  _mainPlayers = [NSMutableArray array];
   return self;
 }
 
@@ -792,6 +823,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                                        avFactory:_avFactory
                                      extraOption:options.extraOption
                                        registrar:self.registrar];
+    [_mainPlayers addObject:player];
     return @([self onPlayerSetup:player frameUpdater:frameUpdater]);
   } else {
     *error = [FlutterError errorWithCode:@"video_player" message:@"not implemented" details:nil];
@@ -804,6 +836,10 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   FVPVideoPlayer *player = self.playersByTextureId[playerKey];
   [self.registry unregisterTexture:textureId];
   [self.playersByTextureId removeObjectForKey:playerKey];
+    if (_pipManager != nil) {
+        [_pipManager onDisposePlayer:player];
+    }
+  [_mainPlayers removeObject:player];
   if (!player.disposed) {
     [player dispose];
   }
@@ -851,6 +887,101 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   [player pause];
 }
 
+- (NSNumber *)enablePictureInPicture:(BOOL)enable error:(FlutterError **)error {
+    NSLog(@"enablePictureInPicture enable: %d", enable);
+    if (![AVPictureInPictureController isPictureInPictureSupported]) {
+        NSLog(@"isPictureInPictureSupported = NO");
+    }
+    // [[AVAudioSession sharedInstance] setCategory: AVAudioSessionCategoryPlayback error:nil];
+    // [[AVAudioSession sharedInstance] setActive:YES error:nil];
+    
+    UIWindow *rootWindow = nil;
+    for (UIWindow *window in [UIApplication sharedApplication].windows) {
+        if (window.isKeyWindow) {
+            rootWindow = window;
+            break;
+        }
+    }
+    
+    if (rootWindow == nil) {
+        return @0;
+    }
+    
+    if (_pipManager == nil) {
+        _pipManager = [[PipManager alloc] init];
+        AVPlayerLayer* avPlayerLayer = [AVPlayerLayer playerLayerWithPlayer:nil];
+        avPlayerLayer.hidden = YES;
+        _pipManager.avPlayerLayer = avPlayerLayer;
+        AVPictureInPictureController* pipController = [[AVPictureInPictureController alloc] initWithPlayerLayer:avPlayerLayer];
+        pipController.delegate = self;
+        _pipManager.pipController = pipController;
+    }
+    
+    CGFloat x = 0;
+    CGFloat y = 30;
+    CGFloat width = [UIScreen mainScreen].bounds.size.width;
+    CGFloat height = width * 9 / 16;
+    
+    _pipManager.avPlayerLayer.frame = CGRectMake(x, y, width, height);
+    
+    if (_mainPlayers.count > 0) {
+        FVPVideoPlayer *player = _mainPlayers.lastObject;
+        player.playerLayer.player = nil;
+        // player.player.allowsExternalPlayback = YES;
+        // player.player.accessibilityElementsHidden = YES;
+        [_pipManager setCurrentPlayer:player];
+    } else {
+        /// TODO: blank player
+        _pipManager.avPlayerLayer.player = nil;
+    }
+
+    if (_pipManager.avPlayerLayer.superlayer != rootWindow.rootViewController.view.layer) {
+        [_pipManager.avPlayerLayer removeFromSuperlayer];
+        [rootWindow.rootViewController.view.layer addSublayer:_pipManager.avPlayerLayer];
+    }
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        NSLog(@"pipController startPictureInPicture");
+        [self.pipManager.pipController startPictureInPicture];
+    });
+
+    //    if (@available(iOS 14.2, *)) {
+    //        _pipController.canStartPictureInPictureAutomaticallyFromInline = YES;
+    //    }
+
+    return @1;
+}
+
+/// Start PIP listener AVPictureInPictureControllerDelegate
+- (void)pictureInPictureControllerWillStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
+    NSLog(@"pictureInPictureControllerWillStartPictureInPicture");
+}
+
+- (void)pictureInPictureControllerDidStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
+    NSLog(@"pictureInPictureControllerDidStartPictureInPicture");
+    [_pipManager onPipDidStart];
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController failedToStartPictureInPictureWithError:(NSError *)error {
+    NSLog(@"failedToStartPictureInPictureWithError %@", error.localizedDescription);
+    [_pipManager onPipDidStop];
+}
+
+- (void)pictureInPictureControllerWillStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
+    NSLog(@"pictureInPictureControllerWillStopPictureInPicture");
+}
+
+- (void)pictureInPictureControllerDidStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
+    NSLog(@"pictureInPictureControllerDidStopPictureInPicture");
+    [_pipManager onPipDidStop];
+}
+
+- (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController restoreUserInterfaceForPictureInPictureStopWithCompletionHandler:(void (^)(BOOL restored))completionHandler {
+    NSLog(@"restoreUserInterfaceForPictureInPictureStopWithCompletionHandler");
+}
+
+/// End AVPictureInPictureControllerDelegate listener
+
 - (void)setMixWithOthers:(BOOL)mixWithOthers
                    error:(FlutterError *_Nullable __autoreleasing *)error {
 #if TARGET_OS_OSX
@@ -864,6 +995,50 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
   }
 #endif
+}
+
+@end
+
+
+@implementation PipManager
+
+- (void)setCurrentPlayer:(FVPVideoPlayer *)player {
+    if (_currentPlayer != nil && _currentPlayer != player) {
+        [_currentPlayer setEnableFrameUpdate:YES];
+        _currentPlayer = nil;
+    }
+    _currentPlayer = player;
+    if (self.avPlayerLayer != nil) {
+        if (player != nil) {
+            self.avPlayerLayer.player = player.player;
+        } else {
+            self.avPlayerLayer.player = nil;
+        }
+    }
+}
+
+- (void)onPipDidStart {
+    if (_currentPlayer != nil) {
+        [_currentPlayer setEnableFrameUpdate:NO];
+    }
+}
+
+- (void)onPipDidStop {
+    if (_currentPlayer != nil) {
+        [self setCurrentPlayer:nil];
+    }
+    if (_avPlayerLayer != nil) {
+        [_avPlayerLayer removeFromSuperlayer];
+    }
+}
+
+- (void)onDisposePlayer:(FVPVideoPlayer *)player {
+    if (_currentPlayer == player) {
+        _currentPlayer = nil;
+        if (self.avPlayerLayer != nil && self.avPlayerLayer.player == player.player) {
+            self.avPlayerLayer.player = nil;
+        }
+    }
 }
 
 @end
