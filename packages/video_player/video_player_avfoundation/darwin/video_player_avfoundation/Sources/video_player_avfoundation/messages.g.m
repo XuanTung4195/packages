@@ -352,12 +352,13 @@ void SetUpFVPAVFoundationVideoPlayerApiWithSuffix(id<FlutterBinaryMessenger> bin
         binaryMessenger:binaryMessenger
         codec:FVPAVFoundationVideoPlayerApiGetCodec()];
     if (api) {
-      NSCAssert([api respondsToSelector:@selector(enablePictureInPicture:error:)], @"FVPAVFoundationVideoPlayerApi api (%@) doesn't respond to @selector(enablePictureInPicture:error:)", api);
+      NSCAssert([api respondsToSelector:@selector(enablePictureInPicture:data:error:)], @"FVPAVFoundationVideoPlayerApi api (%@) doesn't respond to @selector(enablePictureInPicture:data:error:)", api);
       [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
         NSArray *args = message;
-        BOOL arg_enable = [GetNullableObjectAtIndex(args, 0) boolValue];
+        NSString *arg_command = GetNullableObjectAtIndex(args, 0);
+        NSDictionary<NSString *, id> *arg_data = GetNullableObjectAtIndex(args, 1);
         FlutterError *error;
-        NSNumber *output = [api enablePictureInPicture:arg_enable error:&error];
+        NSNumber *output = [api enablePictureInPicture:arg_command data:arg_data error:&error];
         callback(wrapResult(output, error));
       }];
     } else {

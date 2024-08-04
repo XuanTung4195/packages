@@ -367,7 +367,7 @@ class AVFoundationVideoPlayerApi {
     }
   }
 
-  Future<int> enablePictureInPicture(bool enable) async {
+  Future<int> enablePictureInPicture(String command, Map<String?, Object?>? data) async {
     final String __pigeon_channelName = 'dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.enablePictureInPicture$__pigeon_messageChannelSuffix';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
@@ -375,7 +375,7 @@ class AVFoundationVideoPlayerApi {
       binaryMessenger: __pigeon_binaryMessenger,
     );
     final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[enable]) as List<Object?>?;
+        await __pigeon_channel.send(<Object?>[command, data]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {

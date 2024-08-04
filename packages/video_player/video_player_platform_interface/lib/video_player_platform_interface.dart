@@ -121,7 +121,7 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
     return Future.value([]);
   }
 
-  Future<int> enablePictureInPictureMode(bool enable) async {
+  Future<int> enablePictureInPicture(String command, Map<String?, Object?>? data) async {
     return 1;
   }
 

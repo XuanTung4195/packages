@@ -34,6 +34,14 @@
 
 @property(nonatomic, strong) AVPlayerLayer* avPlayerLayer;
 
+@property(nonatomic, weak) NSObject<FlutterPluginRegistrar> *registrar;
+
+@property(nonatomic, strong) AVPlayer* placeHolderPlayer;
+
+@property (nonatomic, assign) BOOL enablePlaceholderVideo;
+
+@property (nonatomic, assign) BOOL pipEnabled;
+
 - (void)setCurrentPlayer:(FVPVideoPlayer *)player;
 
 - (void)onPipDidStart;
@@ -41,6 +49,10 @@
 - (void)onPipDidStop;
 
 - (void)onDisposePlayer:(FVPVideoPlayer *)player;
+
+- (void)playBlackScreenVideo;
+
+- (void)disposeBlackScreenVideo;
 
 @end
 
@@ -824,6 +836,11 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                                      extraOption:options.extraOption
                                        registrar:self.registrar];
     [_mainPlayers addObject:player];
+      /// Show in pip player
+      if (_pipManager != nil && _pipManager.pipEnabled && _pipManager.pipController != nil && [_pipManager.pipController isPictureInPictureActive]) {
+          player.playerLayer.player = nil;
+          [_pipManager setCurrentPlayer:player];
+      }
     return @([self onPlayerSetup:player frameUpdater:frameUpdater]);
   } else {
     *error = [FlutterError errorWithCode:@"video_player" message:@"not implemented" details:nil];
@@ -887,10 +904,11 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   [player pause];
 }
 
-- (NSNumber *)enablePictureInPicture:(BOOL)enable error:(FlutterError **)error {
-    NSLog(@"enablePictureInPicture enable: %d", enable);
+- (NSNumber *)enablePictureInPicture:(NSString *)command data:(NSDictionary<NSString *, id> *)data error:(FlutterError **)error {
+    NSLog(@"enablePictureInPicture command: %@", command);
     if (![AVPictureInPictureController isPictureInPictureSupported]) {
-        NSLog(@"isPictureInPictureSupported = NO");
+        NSLog(@"PictureInPicture IS NOT Supported");
+        return @0;
     }
     // [[AVAudioSession sharedInstance] setCategory: AVAudioSessionCategoryPlayback error:nil];
     // [[AVAudioSession sharedInstance] setActive:YES error:nil];
@@ -909,45 +927,81 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     
     if (_pipManager == nil) {
         _pipManager = [[PipManager alloc] init];
+        _pipManager.enablePlaceholderVideo = YES;
+        _pipManager.registrar = _registrar;
         AVPlayerLayer* avPlayerLayer = [AVPlayerLayer playerLayerWithPlayer:nil];
         avPlayerLayer.hidden = YES;
         _pipManager.avPlayerLayer = avPlayerLayer;
         AVPictureInPictureController* pipController = [[AVPictureInPictureController alloc] initWithPlayerLayer:avPlayerLayer];
         pipController.delegate = self;
         _pipManager.pipController = pipController;
+        _pipManager.pipEnabled = NO;
     }
     
-    CGFloat x = 0;
-    CGFloat y = 30;
-    CGFloat width = [UIScreen mainScreen].bounds.size.width;
-    CGFloat height = width * 9 / 16;
-    
-    _pipManager.avPlayerLayer.frame = CGRectMake(x, y, width, height);
-    
-    if (_mainPlayers.count > 0) {
-        FVPVideoPlayer *player = _mainPlayers.lastObject;
-        player.playerLayer.player = nil;
-        // player.player.allowsExternalPlayback = YES;
-        // player.player.accessibilityElementsHidden = YES;
-        [_pipManager setCurrentPlayer:player];
-    } else {
-        /// TODO: blank player
-        _pipManager.avPlayerLayer.player = nil;
-    }
-
     if (_pipManager.avPlayerLayer.superlayer != rootWindow.rootViewController.view.layer) {
         [_pipManager.avPlayerLayer removeFromSuperlayer];
         [rootWindow.rootViewController.view.layer addSublayer:_pipManager.avPlayerLayer];
     }
+    
+    if ([command isEqualToString:@"disable"]) {
+        if (_pipManager != nil && _pipManager.pipController != nil) {
+            [_pipManager onPipDidStop];
+            [_pipManager.pipController stopPictureInPicture];
+        }
+    } else if ([command isEqualToString:@"enable"]) {
+        CGFloat x = 0;
+        CGFloat y = 30;
+        CGFloat width = [UIScreen mainScreen].bounds.size.width;
+        CGFloat height = width * 9 / 16;
+        
+        NSNumber *top = data[@"top"];
+        NSNumber *left = data[@"left"];
+        NSNumber *mWidth = data[@"width"];
+        NSNumber *mHeight = data[@"height"];
+        if (left != nil) {
+            x = [left doubleValue];
+        }
+        if (top != nil) {
+            y = [top doubleValue];
+        }
+        if (mWidth != nil) {
+            width = [mWidth doubleValue];
+        }
+        if (mHeight != nil) {
+            height = [mHeight doubleValue];
+        }
+        _pipManager.avPlayerLayer.frame = CGRectMake(x, y, width, height);
+        
+        if (_mainPlayers.count > 0) {
+            FVPVideoPlayer *player = _mainPlayers.lastObject;
+            player.playerLayer.player = nil;
+            // player.player.allowsExternalPlayback = YES;
+            // player.player.accessibilityElementsHidden = YES;
+            [_pipManager setCurrentPlayer:player];
+        } else {
+            /// TODO: blank player
+            _pipManager.avPlayerLayer.player = nil;
+        }
 
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        NSLog(@"pipController startPictureInPicture");
-        [self.pipManager.pipController startPictureInPicture];
-    });
+        //    if (@available(iOS 14.2, *)) {
+        //        _pipController.canStartPictureInPictureAutomaticallyFromInline = YES;
+        //    }
 
-    //    if (@available(iOS 14.2, *)) {
-    //        _pipController.canStartPictureInPictureAutomaticallyFromInline = YES;
-    //    }
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            NSLog(@"pipController startPictureInPicture");
+            [self.pipManager.pipController startPictureInPicture];
+        });
+        return @1;
+    } else if ([command isEqualToString:@"enablePlaceholderVideo"]) {
+        _pipManager.enablePlaceholderVideo = YES;
+    } else if ([command isEqualToString:@"disablePlaceholderVideo"]) {
+        _pipManager.enablePlaceholderVideo = NO;
+    }
+    else if ([command isEqualToString:@"playBlackScreenVideo"]) {
+        [_pipManager playBlackScreenVideo];
+    } else if ([command isEqualToString:@"disposeBlackScreenVideo"]) {
+        [_pipManager disposeBlackScreenVideo];
+    }
 
     return @1;
 }
@@ -955,24 +1009,29 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 /// Start PIP listener AVPictureInPictureControllerDelegate
 - (void)pictureInPictureControllerWillStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
     NSLog(@"pictureInPictureControllerWillStartPictureInPicture");
+    _pipManager.pipEnabled = YES;
 }
 
 - (void)pictureInPictureControllerDidStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
     NSLog(@"pictureInPictureControllerDidStartPictureInPicture");
+    _pipManager.pipEnabled = YES;
     [_pipManager onPipDidStart];
 }
 
 - (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController failedToStartPictureInPictureWithError:(NSError *)error {
     NSLog(@"failedToStartPictureInPictureWithError %@", error.localizedDescription);
+    _pipManager.pipEnabled = NO;
     [_pipManager onPipDidStop];
 }
 
 - (void)pictureInPictureControllerWillStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
     NSLog(@"pictureInPictureControllerWillStopPictureInPicture");
+    _pipManager.pipEnabled = NO;
 }
 
 - (void)pictureInPictureControllerDidStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
     NSLog(@"pictureInPictureControllerDidStopPictureInPicture");
+    _pipManager.pipEnabled = NO;
     [_pipManager onPipDidStop];
 }
 
@@ -1012,7 +1071,11 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
         if (player != nil) {
             self.avPlayerLayer.player = player.player;
         } else {
-            self.avPlayerLayer.player = nil;
+            if (_enablePlaceholderVideo) {
+                [self playBlackScreenVideo];
+            } else {
+                self.avPlayerLayer.player = nil;
+            }
         }
     }
 }
@@ -1030,14 +1093,56 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     if (_avPlayerLayer != nil) {
         [_avPlayerLayer removeFromSuperlayer];
     }
+    [self disposeBlackScreenVideo];
 }
 
 - (void)onDisposePlayer:(FVPVideoPlayer *)player {
     if (_currentPlayer == player) {
         _currentPlayer = nil;
         if (self.avPlayerLayer != nil && self.avPlayerLayer.player == player.player) {
-            self.avPlayerLayer.player = nil;
+            if (!_enablePlaceholderVideo) {
+                self.avPlayerLayer.player = nil;
+            }
         }
+    }
+    if (_enablePlaceholderVideo) {
+        [self playBlackScreenVideo];
+    }
+}
+
+- (void)playBlackScreenVideo {
+    NSString *assetPath;
+    assetPath = [_registrar lookupKeyForAsset:@"assets/mp4/pip_black.mp4"];
+    NSString *bundlePath = [[NSBundle mainBundle] pathForResource:assetPath ofType:nil];
+    if (bundlePath != nil && _avPlayerLayer != nil && _pipController != nil) {
+        if (_placeHolderPlayer != nil) {
+            [_placeHolderPlayer pause];
+            // [_placeHolderPlayer replaceCurrentItemWithPlayerItem:nil];
+            _placeHolderPlayer = nil;
+        }
+        AVURLAsset *asset = [AVURLAsset assetWithURL:[NSURL fileURLWithPath:bundlePath]];
+        AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:asset];
+        _placeHolderPlayer = [AVPlayer playerWithPlayerItem:playerItem];
+        _placeHolderPlayer.muted = YES;
+        _placeHolderPlayer.allowsExternalPlayback = YES;
+        _placeHolderPlayer.accessibilityElementsHidden = YES;
+        [_placeHolderPlayer play];
+        self.avPlayerLayer.player = _placeHolderPlayer;
+        if (_currentPlayer != nil) {
+            [_currentPlayer setEnableFrameUpdate:YES];
+            _currentPlayer = nil;
+        }
+    }
+}
+
+- (void)disposeBlackScreenVideo {
+    if (_placeHolderPlayer != nil) {
+        if (_avPlayerLayer.player == _placeHolderPlayer) {
+            _avPlayerLayer.player = nil;
+        }
+        [_placeHolderPlayer pause];
+        [_placeHolderPlayer replaceCurrentItemWithPlayerItem:nil];
+        _placeHolderPlayer = nil;
     }
 }
 

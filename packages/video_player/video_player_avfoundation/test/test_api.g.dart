@@ -62,7 +62,7 @@ abstract class TestHostVideoPlayerApi {
 
   void setMixWithOthers(bool mixWithOthers);
 
-  int enablePictureInPicture(bool enable);
+  int enablePictureInPicture(String command, Map<String?, Object?>? data);
 
   static void setUp(TestHostVideoPlayerApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
@@ -358,11 +358,12 @@ abstract class TestHostVideoPlayerApi {
           assert(message != null,
           'Argument for dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.enablePictureInPicture was null.');
           final List<Object?> args = (message as List<Object?>?)!;
-          final bool? arg_enable = (args[0] as bool?);
-          assert(arg_enable != null,
-              'Argument for dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.enablePictureInPicture was null, expected non-null bool.');
+          final String? arg_command = (args[0] as String?);
+          assert(arg_command != null,
+              'Argument for dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.enablePictureInPicture was null, expected non-null String.');
+          final Map<String?, Object?>? arg_data = (args[1] as Map<Object?, Object?>?)?.cast<String?, Object?>();
           try {
-            final int output = api.enablePictureInPicture(arg_enable!);
+            final int output = api.enablePictureInPicture(arg_command!, arg_data);
             return <Object?>[output];
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

@@ -733,8 +733,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   /// enablePictureInPictureMode
-  static Future<int> enablePictureInPictureMode(bool enable) async {
-    return _videoPlayerPlatform.enablePictureInPictureMode(enable);
+  static Future<int> enablePictureInPictureMode(String command, Map<String?, Object?>? data) async {
+    return _videoPlayerPlatform.enablePictureInPicture(command, data);
   }
 
   /// Sets the playback speed of [this].

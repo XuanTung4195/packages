@@ -172,8 +172,8 @@ class AVFoundationVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
-  Future<int> enablePictureInPictureMode(bool enable) async {
-    return _api.enablePictureInPicture(enable);
+  Future<int> enablePictureInPicture(String command, Map<String?, Object?>? data) async {
+    return _api.enablePictureInPicture(command, data);
   }
 
 }
