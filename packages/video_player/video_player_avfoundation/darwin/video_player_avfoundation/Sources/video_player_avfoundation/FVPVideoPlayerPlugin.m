@@ -905,6 +905,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 - (NSNumber *)enablePictureInPicture:(NSString *)command data:(NSDictionary<NSString *, id> *)data error:(FlutterError **)error {
+#if TARGET_OS_IOS
     NSLog(@"enablePictureInPicture command: %@", command);
     if (![AVPictureInPictureController isPictureInPictureSupported]) {
         NSLog(@"PictureInPicture IS NOT Supported");
@@ -1004,6 +1005,9 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     }
 
     return @1;
+#else
+    return @0;
+#endif
 }
 
 /// Start PIP listener AVPictureInPictureControllerDelegate
@@ -1111,6 +1115,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 - (void)playBlackScreenVideo {
+#if TARGET_OS_IOS
     NSString *assetPath;
     assetPath = [_registrar lookupKeyForAsset:@"assets/mp4/pip_black.mp4"];
     NSString *bundlePath = [[NSBundle mainBundle] pathForResource:assetPath ofType:nil];
@@ -1133,6 +1138,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
             _currentPlayer = nil;
         }
     }
+#endif
 }
 
 - (void)disposeBlackScreenVideo {
