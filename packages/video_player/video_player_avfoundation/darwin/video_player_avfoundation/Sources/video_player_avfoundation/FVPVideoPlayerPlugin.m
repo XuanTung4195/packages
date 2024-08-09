@@ -436,10 +436,14 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
       // its presentation size or duration. When these properties are finally set, re-check if
       // all required properties and instantiate the event sink if it is not already set up.
       [self setupEventSinkIfReadyToPlay];
-      [self updatePlayingState];
+      if (_playerLayer.player != nil) {
+        [self updatePlayingState];
+      }
     }
   } else if (context == playbackLikelyToKeepUpContext) {
-    [self updatePlayingState];
+      if (_playerLayer.player != nil) {
+          [self updatePlayingState];
+      }
     if ([[_player currentItem] isPlaybackLikelyToKeepUp]) {
       if (_eventSink != nil) {
         _eventSink(@{@"event" : @"bufferingEnd"});
@@ -835,12 +839,17 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                                        avFactory:_avFactory
                                      extraOption:options.extraOption
                                        registrar:self.registrar];
-    [_mainPlayers addObject:player];
-      /// Show in pip player
-      if (_pipManager != nil && _pipManager.pipEnabled && _pipManager.pipController != nil && [_pipManager.pipController isPictureInPictureActive]) {
-          player.playerLayer.player = nil;
-          [_pipManager setCurrentPlayer:player];
-      }
+    if (options.extraOption != nil 
+        && options.extraOption[@"playerType"] != nil
+        && [options.extraOption[@"playerType"] isEqualToString:@"main"]) {
+        [_mainPlayers addObject:player];
+        /// Show in pip player
+        if (_pipManager != nil && _pipManager.pipEnabled && _pipManager.pipController != nil && [_pipManager.pipController isPictureInPictureActive]) {
+            player.playerLayer.player = nil;
+            [player setEnableFrameUpdate:NO];
+            [_pipManager setCurrentPlayer:player];
+        }
+    }
     return @([self onPlayerSetup:player frameUpdater:frameUpdater]);
   } else {
     *error = [FlutterError errorWithCode:@"video_player" message:@"not implemented" details:nil];
@@ -853,7 +862,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   FVPVideoPlayer *player = self.playersByTextureId[playerKey];
   [self.registry unregisterTexture:textureId];
   [self.playersByTextureId removeObjectForKey:playerKey];
-    if (_pipManager != nil) {
+    if (_pipManager != nil && [_mainPlayers containsObject:player]) {
         [_pipManager onDisposePlayer:player];
     }
   [_mainPlayers removeObject:player];
@@ -1109,7 +1118,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
             }
         }
     }
-    if (_enablePlaceholderVideo) {
+    if (_enablePlaceholderVideo && _pipEnabled) {
         [self playBlackScreenVideo];
     }
 }
