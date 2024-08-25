@@ -546,7 +546,17 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   // Note: https://openradar.appspot.com/radar?id=4968600712511488
   // `[AVPlayerItem duration]` can be `kCMTimeIndefinite`,
   // use `[[AVPlayerItem asset] duration]` instead.
-  return FVPCMTimeToMillis([[[_player currentItem] asset] duration]);
+  CMTime duration = [[[_player currentItem] asset] duration];
+  if (!CMTIME_IS_INDEFINITE(duration)) {
+      return FVPCMTimeToMillis(duration);
+  }
+  NSArray *seekableRanges = [_player currentItem].seekableTimeRanges;
+  if (seekableRanges.count > 0) {
+      CMTimeRange lastRange = [[seekableRanges lastObject] CMTimeRangeValue];
+      CMTime endTime = CMTimeAdd(lastRange.start, lastRange.duration);
+      return FVPCMTimeToMillis(endTime);
+  }
+  return FVPCMTimeToMillis(duration);
 }
 
 - (void)seekTo:(int64_t)location completionHandler:(void (^)(BOOL))completionHandler {
