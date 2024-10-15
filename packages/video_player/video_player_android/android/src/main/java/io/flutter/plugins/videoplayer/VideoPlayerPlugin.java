@@ -32,6 +32,8 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import javax.net.ssl.HttpsURLConnection;
 
+import java.util.Map;
+
 /** Android platform implementation of the VideoPlayerPlugin. */
 public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
   private static final String TAG = "VideoPlayerPlugin";
