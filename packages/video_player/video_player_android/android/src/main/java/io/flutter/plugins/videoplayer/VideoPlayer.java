@@ -8,52 +8,48 @@ import static androidx.media3.common.Player.REPEAT_MODE_ALL;
 import static androidx.media3.common.Player.REPEAT_MODE_OFF;
 
 import android.content.Context;
-import android.util.Log;
-import android.view.Surface;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.OptIn;
+import androidx.annotation.RestrictTo;
 import androidx.annotation.VisibleForTesting;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
-import androidx.media3.common.Format;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackParameters;
-import androidx.media3.common.TrackGroup;
-import androidx.media3.common.util.UnstableApi;
-import androidx.media3.datasource.DataSource;
-import androidx.media3.datasource.DefaultDataSource;
-import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-import androidx.media3.exoplayer.source.MediaSource;
-import androidx.media3.exoplayer.source.TrackGroupArray;
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
-import androidx.media3.exoplayer.trackselection.MappingTrackSelector;
-import androidx.media3.exoplayer.trackselection.TrackSelector;
-import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
+import io.flutter.view.TextureRegistry;
+import androidx.media3.common.util.UnstableApi;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 import io.flutter.plugins.videoplayer.custom.BuildDataSourceHelper;
 import io.flutter.plugins.videoplayer.custom.PlayerDataSource;
-import androidx.media3.exoplayer.ExoPlayer;
-import io.flutter.view.TextureRegistry;
+import androidx.media3.exoplayer.source.TrackGroupArray;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
+import androidx.media3.exoplayer.trackselection.MappingTrackSelector;
+import androidx.media3.exoplayer.trackselection.TrackSelector;
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
+import androidx.media3.common.TrackGroup;
+import androidx.media3.common.util.UnstableApi;
+import androidx.annotation.OptIn;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.common.Format;
 
-final class VideoPlayer {
-  private ExoPlayer exoPlayer;
-  private Surface surface;
-  private final TextureRegistry.SurfaceTextureEntry textureEntry;
-  private final VideoPlayerCallbacks videoPlayerEvents;
-  private final VideoPlayerOptions options;
+final class VideoPlayer implements TextureRegistry.SurfaceProducer.Callback {
+  @NonNull private final ExoPlayerProvider exoPlayerProvider;
+  @NonNull private final MediaItem mediaItem;
+  @NonNull private final TextureRegistry.SurfaceProducer surfaceProducer;
+  @NonNull private final VideoPlayerCallbacks videoPlayerEvents;
+  @NonNull private final VideoPlayerOptions options;
+  @NonNull private ExoPlayer exoPlayer;
+  @Nullable private ExoPlayerState savedStateDuring;
 
-  private PlayerDataSource playerDataSource;
-
+  List<Map<String, String>> extraDatasource;
   private final DefaultTrackSelector trackSelector;
+  private PlayerDataSource playerDataSource;
+  VideoAsset asset;
   Context context;
 
   /**
@@ -61,42 +57,93 @@ final class VideoPlayer {
    *
    * @param context application context.
    * @param events event callbacks.
-   * @param textureEntry texture to render to.
+   * @param surfaceProducer produces a texture to render to.
    * @param asset asset to play.
    * @param options options for playback.
    * @return a video player instance.
    */
   @NonNull
   static VideoPlayer create(
-      Context context,
-      VideoPlayerCallbacks events,
-      TextureRegistry.SurfaceTextureEntry textureEntry,
-      VideoAsset asset,
-      List<Map<String, String>> extraDatasource,
-      VideoPlayerOptions options) {
-    ExoPlayer.Builder builder =
-            new ExoPlayer.Builder(context).setMediaSourceFactory(asset.getMediaSourceFactory(context));
-    return new VideoPlayer(context, asset, builder, events, textureEntry, asset.getMediaItem(), extraDatasource, options);
+          @NonNull Context context,
+          @NonNull VideoPlayerCallbacks events,
+          @NonNull TextureRegistry.SurfaceProducer surfaceProducer,
+          @NonNull VideoAsset asset,
+          List<Map<String, String>> extraDatasource,
+          @NonNull VideoPlayerOptions options) {
+    DefaultTrackSelector trackSelector = new DefaultTrackSelector(context);
+    return new VideoPlayer(
+            context,
+            () -> {
+              ExoPlayer.Builder builder =
+                      new ExoPlayer.Builder(context)
+                              .setMediaSourceFactory(asset.getMediaSourceFactory(context));
+              builder.setTrackSelector(trackSelector);
+              return builder.build();
+            },
+            events,
+            surfaceProducer,
+            asset.getMediaItem(),
+            asset,
+            extraDatasource,
+            trackSelector,
+            options);
   }
 
-  @OptIn(markerClass = UnstableApi.class)
+  /** A closure-compatible signature since {@link java.util.function.Supplier} is API level 24. */
+  interface ExoPlayerProvider {
+    /**
+     * Returns a new {@link ExoPlayer}.
+     *
+     * @return new instance.
+     */
+    ExoPlayer get();
+  }
+
   @VisibleForTesting
   VideoPlayer(
-      Context context,
-      VideoAsset asset,
-      ExoPlayer.Builder builder,
-      VideoPlayerCallbacks events,
-      TextureRegistry.SurfaceTextureEntry textureEntry,
-      MediaItem mediaItem,
-      List<Map<String, String>> extraDatasource,
-      VideoPlayerOptions options) {
+          Context context,
+          @NonNull ExoPlayerProvider exoPlayerProvider,
+          @NonNull VideoPlayerCallbacks events,
+          @NonNull TextureRegistry.SurfaceProducer surfaceProducer,
+          @NonNull MediaItem mediaItem,
+          VideoAsset asset,
+          List<Map<String, String>> extraDatasource,
+          DefaultTrackSelector trackSelector,
+          @NonNull VideoPlayerOptions options) {
     this.context = context;
+    this.exoPlayerProvider = exoPlayerProvider;
     this.videoPlayerEvents = events;
-    this.textureEntry = textureEntry;
+    this.surfaceProducer = surfaceProducer;
+    this.mediaItem = mediaItem;
     this.options = options;
-    trackSelector = new DefaultTrackSelector(context);
-    builder.setTrackSelector(trackSelector);
-    ExoPlayer exoPlayer = builder.build();
+    this.extraDatasource = extraDatasource;
+    this.trackSelector = trackSelector;
+    this.asset = asset;
+    this.exoPlayer = createVideoPlayer();
+    surfaceProducer.setCallback(this);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  // TODO(matanlurey): https://github.com/flutter/flutter/issues/155131.
+  @SuppressWarnings({"deprecation", "removal"})
+  public void onSurfaceCreated() {
+    if (savedStateDuring != null) {
+      exoPlayer = createVideoPlayer();
+      savedStateDuring.restore(exoPlayer);
+      savedStateDuring = null;
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void onSurfaceDestroyed() {
+    // Intentionally do not call pause/stop here, because the surface has already been released
+    // at this point (see https://github.com/flutter/flutter/issues/156451).
+    savedStateDuring = ExoPlayerState.save(exoPlayer);
+    exoPlayer.release();
+  }
+
+  private ExoPlayer createVideoPlayer() {
+    ExoPlayer exoPlayer = exoPlayerProvider.get();
 
     if (extraDatasource == null || extraDatasource.isEmpty()) {
       String dataSource = asset.assetUrl;
@@ -113,48 +160,16 @@ final class VideoPlayer {
       exoPlayer.setMediaSource(mediaSource);
     }
 
+    // exoPlayer.setMediaItem(mediaItem);
     exoPlayer.prepare();
 
-    setUpVideoPlayer(exoPlayer);
-  }
+    exoPlayer.setVideoSurface(surfaceProducer.getSurface());
 
-  @OptIn(markerClass = UnstableApi.class)
-  public void changeDataSource(Context context,
-                         String dataSource,
-                         String audioDataSource,
-                         List<Map<String, String>> extraDatasource,
-                         String formatHint,
-                         @NonNull Map<String, String> httpHeaders,
-                         VideoPlayerOptions options) {
-    if (extraDatasource == null || extraDatasource.isEmpty()) {
-      if (dataSource.endsWith(".m3u8")) {
-        if (playerDataSource == null) {
-          playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
-        }
-        MediaSource mediaSource = BuildDataSourceHelper.getHlsMediaSource(playerDataSource, dataSource);
-        exoPlayer.setMediaSource(mediaSource);
-      } else {
-        MediaItem mediaItem = new MediaItem.Builder()
-                .setUri(dataSource)
-                .build();
-        exoPlayer.setMediaItem(mediaItem);
-      }
-    } else {
-      playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
-      MediaSource mediaSource = BuildDataSourceHelper.getMediaSource(playerDataSource, extraDatasource);
-      if (mediaSource != null) {
-        exoPlayer.setMediaSource(mediaSource, false);
-      }
-    }
-  }
-
-  private void setUpVideoPlayer(ExoPlayer exoPlayer) {
-    this.exoPlayer = exoPlayer;
-
-    surface = new Surface(textureEntry.surfaceTexture());
-    exoPlayer.setVideoSurface(surface);
+    boolean wasInitialized = savedStateDuring != null;
+    exoPlayer.addListener(new ExoPlayerEventListener(exoPlayer, videoPlayerEvents, wasInitialized));
     setAudioAttributes(exoPlayer, options.mixWithOthers);
-    exoPlayer.addListener(new ExoPlayerEventListener(exoPlayer, videoPlayerEvents));
+
+    return exoPlayer;
   }
 
   void sendBufferingUpdate() {
@@ -163,16 +178,16 @@ final class VideoPlayer {
 
   private static void setAudioAttributes(ExoPlayer exoPlayer, boolean isMixMode) {
     exoPlayer.setAudioAttributes(
-        new AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
-        !isMixMode);
+            new AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
+            !isMixMode);
   }
 
   void play() {
-    exoPlayer.setPlayWhenReady(true);
+    exoPlayer.play();
   }
 
   void pause() {
-    exoPlayer.setPlayWhenReady(false);
+    exoPlayer.pause();
   }
 
   void setLooping(boolean value) {
@@ -201,12 +216,41 @@ final class VideoPlayer {
   }
 
   void dispose() {
-    textureEntry.release();
-    if (surface != null) {
-      surface.release();
-    }
-    if (exoPlayer != null) {
-      exoPlayer.release();
+    exoPlayer.release();
+    surfaceProducer.release();
+
+    // TODO(matanlurey): Remove when embedder no longer calls-back once released.
+    // https://github.com/flutter/flutter/issues/156434.
+    surfaceProducer.setCallback(null);
+  }
+
+  @OptIn(markerClass = UnstableApi.class)
+  public void changeDataSource(Context context,
+                               String dataSource,
+                               String audioDataSource,
+                               List<Map<String, String>> extraDatasource,
+                               String formatHint,
+                               @NonNull Map<String, String> httpHeaders,
+                               VideoPlayerOptions options) {
+    if (extraDatasource == null || extraDatasource.isEmpty()) {
+      if (dataSource.endsWith(".m3u8")) {
+        if (playerDataSource == null) {
+          playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
+        }
+        MediaSource mediaSource = BuildDataSourceHelper.getHlsMediaSource(playerDataSource, dataSource);
+        exoPlayer.setMediaSource(mediaSource);
+      } else {
+        MediaItem mediaItem = new MediaItem.Builder()
+                .setUri(dataSource)
+                .build();
+        exoPlayer.setMediaItem(mediaItem);
+      }
+    } else {
+      playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
+      MediaSource mediaSource = BuildDataSourceHelper.getMediaSource(playerDataSource, extraDatasource);
+      if (mediaSource != null) {
+        exoPlayer.setMediaSource(mediaSource, false);
+      }
     }
   }
 
