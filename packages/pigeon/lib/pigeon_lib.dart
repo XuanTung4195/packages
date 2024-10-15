@@ -23,6 +23,7 @@ import 'package:analyzer/error/error.dart' show AnalysisError;
 import 'package:args/args.dart';
 import 'package:collection/collection.dart' as collection;
 import 'package:path/path.dart' as path;
+import 'package:pub_semver/pub_semver.dart';
 
 import 'ast.dart';
 import 'ast_generator.dart';
@@ -66,7 +67,7 @@ const Object async = _Asynchronous();
 ///
 /// ```dart
 /// class MyProxyApi {
-///   final MyOtherProxyApi myField = __pigeon_myField().
+///   final MyOtherProxyApi myField = pigeon_myField().
 /// }
 /// ```
 ///
@@ -139,7 +140,7 @@ class FlutterApi {
 /// methods.
 class ProxyApi {
   /// Parametric constructor for [ProxyApi].
-  const ProxyApi({this.superClass});
+  const ProxyApi({this.superClass, this.kotlinOptions, this.swiftOptions});
 
   /// The proxy api that is a super class to this one.
   ///
@@ -149,6 +150,14 @@ class ProxyApi {
   /// Note that using this instead of `extends` can cause unexpected conflicts
   /// with inherited method names.
   final Type? superClass;
+
+  /// Options that control how Swift code will be generated for a specific
+  /// ProxyApi.
+  final SwiftProxyApiOptions? swiftOptions;
+
+  /// Options that control how Kotlin code will be generated for a specific
+  /// ProxyApi.
+  final KotlinProxyApiOptions? kotlinOptions;
 }
 
 /// Metadata to annotation methods to control the selector used for objc output.
@@ -843,7 +852,17 @@ class GObjectGeneratorAdapter implements GeneratorAdapter {
   }
 
   @override
-  List<Error> validate(PigeonOptions options, Root root) => <Error>[];
+  List<Error> validate(PigeonOptions options, Root root) {
+    final List<Error> errors = <Error>[];
+    // TODO(tarrinneal): Remove once overflow class is added to gobject generator.
+    // https://github.com/flutter/flutter/issues/152916
+    if (root.classes.length + root.enums.length > totalCustomCodecKeysAllowed) {
+      errors.add(Error(
+          message:
+              'GObject generator does not yet support more than $totalCustomCodecKeysAllowed custom types.'));
+    }
+    return errors;
+  }
 }
 
 /// A [GeneratorAdapter] that generates Kotlin source code.
@@ -909,24 +928,53 @@ List<Error> _validateAst(Root root, String source) {
   final List<String> customClasses =
       root.classes.map((Class x) => x.name).toList();
   final Iterable<String> customEnums = root.enums.map((Enum x) => x.name);
+  for (final Enum enumDefinition in root.enums) {
+    final String? matchingPrefix = _findMatchingPrefixOrNull(
+      enumDefinition.name,
+      prefixes: disallowedPrefixes,
+    );
+    if (matchingPrefix != null) {
+      result.add(Error(
+        message:
+            'Enum name must not begin with "$matchingPrefix" in enum "${enumDefinition.name}"',
+      ));
+    }
+    for (final EnumMember enumMember in enumDefinition.members) {
+      final String? matchingPrefix = _findMatchingPrefixOrNull(
+        enumMember.name,
+        prefixes: disallowedPrefixes,
+      );
+      if (matchingPrefix != null) {
+        result.add(Error(
+          message:
+              'Enum member name must not begin with "$matchingPrefix" in enum member "${enumMember.name}" of enum "${enumDefinition.name}"',
+        ));
+      }
+    }
+  }
   for (final Class classDefinition in root.classes) {
+    final String? matchingPrefix = _findMatchingPrefixOrNull(
+      classDefinition.name,
+      prefixes: disallowedPrefixes,
+    );
+    if (matchingPrefix != null) {
+      result.add(Error(
+        message:
+            'Class name must not begin with "$matchingPrefix" in class "${classDefinition.name}"',
+      ));
+    }
     for (final NamedType field
         in getFieldsInSerializationOrder(classDefinition)) {
-      for (final TypeDeclaration typeArgument in field.type.typeArguments) {
-        if (!typeArgument.isNullable) {
-          result.add(Error(
-            message:
-                'Generic type parameters must be nullable in field "${field.name}" in class "${classDefinition.name}".',
-            lineNumber: _calculateLineNumberNullable(source, field.offset),
-          ));
-        }
-        if (customEnums.contains(typeArgument.baseName)) {
-          result.add(Error(
-            message:
-                'Enum types aren\'t supported in type arguments in "${field.name}" in class "${classDefinition.name}".',
-            lineNumber: _calculateLineNumberNullable(source, field.offset),
-          ));
-        }
+      final String? matchingPrefix = _findMatchingPrefixOrNull(
+        field.name,
+        prefixes: disallowedPrefixes,
+      );
+      if (matchingPrefix != null) {
+        result.add(Error(
+          message:
+              'Class field name must not begin with "$matchingPrefix" in field "${field.name}" of class "${classDefinition.name}"',
+          lineNumber: _calculateLineNumberNullable(source, field.offset),
+        ));
       }
       if (!(validTypes.contains(field.type.baseName) ||
           customClasses.contains(field.type.baseName) ||
@@ -941,6 +989,16 @@ List<Error> _validateAst(Root root, String source) {
   }
 
   for (final Api api in root.apis) {
+    final String? matchingPrefix = _findMatchingPrefixOrNull(
+      api.name,
+      prefixes: disallowedPrefixes,
+    );
+    if (matchingPrefix != null) {
+      result.add(Error(
+        message:
+            'API name must not begin with "$matchingPrefix" in API "${api.name}"',
+      ));
+    }
     if (api is AstProxyApi) {
       result.addAll(_validateProxyApi(
         api,
@@ -950,6 +1008,17 @@ List<Error> _validateAst(Root root, String source) {
       ));
     }
     for (final Method method in api.methods) {
+      final String? matchingPrefix = _findMatchingPrefixOrNull(
+        method.name,
+        prefixes: disallowedPrefixes,
+      );
+      if (matchingPrefix != null) {
+        result.add(Error(
+          message:
+              'Method name must not begin with "$matchingPrefix" in method "${method.name}" in API: "${api.name}"',
+          lineNumber: _calculateLineNumberNullable(source, method.offset),
+        ));
+      }
       for (final Parameter param in method.parameters) {
         if (param.type.baseName.isEmpty) {
           result.add(Error(
@@ -959,13 +1028,13 @@ List<Error> _validateAst(Root root, String source) {
           ));
         } else {
           final String? matchingPrefix = _findMatchingPrefixOrNull(
-            method.name,
-            prefixes: <String>['__pigeon_', 'pigeonChannelCodec'],
+            param.name,
+            prefixes: disallowedPrefixes,
           );
           if (matchingPrefix != null) {
             result.add(Error(
               message:
-                  'Parameter name must not begin with "$matchingPrefix" in method "${method.name} in API: "${api.name}"',
+                  'Parameter name must not begin with "$matchingPrefix" in method "${method.name}" in API: "${api.name}"',
               lineNumber: _calculateLineNumberNullable(source, param.offset),
             ));
           }
@@ -1163,12 +1232,7 @@ List<Error> _validateProxyApi(
       } else {
         final String? matchingPrefix = _findMatchingPrefixOrNull(
           parameter.name,
-          prefixes: <String>[
-            '__pigeon_',
-            'pigeonChannelCodec',
-            classNamePrefix,
-            classMemberNamePrefix,
-          ],
+          prefixes: disallowedPrefixes,
         );
         if (matchingPrefix != null) {
           result.add(Error(
@@ -1203,7 +1267,7 @@ List<Error> _validateProxyApi(
         parameter.name,
         prefixes: <String>[
           classNamePrefix,
-          classMemberNamePrefix,
+          varNamePrefix,
         ],
       );
       if (matchingPrefix != null) {
@@ -1255,23 +1319,6 @@ List<Error> _validateProxyApi(
           lineNumber: _calculateLineNumberNullable(source, field.offset),
         ));
       }
-    }
-
-    final String? matchingPrefix = _findMatchingPrefixOrNull(
-      field.name,
-      prefixes: <String>[
-        '__pigeon_',
-        'pigeonChannelCodec',
-        classNamePrefix,
-        classMemberNamePrefix,
-      ],
-    );
-    if (matchingPrefix != null) {
-      result.add(Error(
-        message:
-            'Field name must not begin with "$matchingPrefix" in API: "${api.name}"',
-        lineNumber: _calculateLineNumberNullable(source, field.offset),
-      ));
     }
   }
 
@@ -1339,13 +1386,16 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
         getReferencedTypes(_apis, _classes);
     final Set<String> referencedTypeNames =
         referencedTypes.keys.map((TypeDeclaration e) => e.baseName).toSet();
-    final List<Class> referencedClasses = List<Class>.from(_classes);
-    referencedClasses
-        .removeWhere((Class x) => !referencedTypeNames.contains(x.name));
+    final List<Class> nonReferencedClasses = List<Class>.from(_classes);
+    nonReferencedClasses
+        .removeWhere((Class x) => referencedTypeNames.contains(x.name));
+    for (final Class x in nonReferencedClasses) {
+      x.isReferenced = false;
+    }
 
     final List<Enum> referencedEnums = List<Enum>.from(_enums);
     final Root completeRoot =
-        Root(apis: _apis, classes: referencedClasses, enums: referencedEnums);
+        Root(apis: _apis, classes: _classes, enums: referencedEnums);
 
     final List<Error> validateErrors = _validateAst(completeRoot, source);
     final List<Error> totalErrors = List<Error>.from(_errors);
@@ -1353,9 +1403,7 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
 
     for (final MapEntry<TypeDeclaration, List<int>> element
         in referencedTypes.entries) {
-      if (!referencedClasses
-              .map((Class e) => e.name)
-              .contains(element.key.baseName) &&
+      if (!_classes.map((Class e) => e.name).contains(element.key.baseName) &&
           !referencedEnums
               .map((Enum e) => e.name)
               .contains(element.key.baseName) &&
@@ -1376,7 +1424,7 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
             lineNumber: lineNumber));
       }
     }
-    for (final Class classDefinition in referencedClasses) {
+    for (final Class classDefinition in _classes) {
       classDefinition.fields = _attachAssociatedDefinitions(
         classDefinition.fields,
       );
@@ -1631,6 +1679,50 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
           }
         }
 
+        SwiftProxyApiOptions? swiftOptions;
+        final Map<String, Object?>? swiftOptionsMap =
+            annotationMap['swiftOptions'] as Map<String, Object?>?;
+        if (swiftOptionsMap != null) {
+          swiftOptions = SwiftProxyApiOptions(
+            name: swiftOptionsMap['name'] as String?,
+            import: swiftOptionsMap['import'] as String?,
+            minIosApi: swiftOptionsMap['minIosApi'] as String?,
+            minMacosApi: swiftOptionsMap['minMacosApi'] as String?,
+            supportsIos: swiftOptionsMap['supportsIos'] as bool? ?? true,
+            supportsMacos: swiftOptionsMap['supportsMacos'] as bool? ?? true,
+          );
+        }
+
+        void tryParseApiRequirement(String? version) {
+          if (version == null) {
+            return;
+          }
+          try {
+            Version.parse(version);
+          } on FormatException catch (error) {
+            _errors.add(
+              Error(
+                message:
+                    'Could not parse version: ${error.message}. Please use semantic versioning format: "1.2.3".',
+                lineNumber: _calculateLineNumber(source, node.offset),
+              ),
+            );
+          }
+        }
+
+        tryParseApiRequirement(swiftOptions?.minIosApi);
+        tryParseApiRequirement(swiftOptions?.minMacosApi);
+
+        KotlinProxyApiOptions? kotlinOptions;
+        final Map<String, Object?>? kotlinOptionsMap =
+            annotationMap['kotlinOptions'] as Map<String, Object?>?;
+        if (kotlinOptionsMap != null) {
+          kotlinOptions = KotlinProxyApiOptions(
+            fullClassName: kotlinOptionsMap['fullClassName'] as String?,
+            minAndroidApi: kotlinOptionsMap['minAndroidApi'] as int?,
+          );
+        }
+
         _currentApi = AstProxyApi(
           name: node.name.lexeme,
           methods: <Method>[],
@@ -1638,6 +1730,8 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
           fields: <ApiField>[],
           superClass: superClass,
           interfaces: interfaces,
+          swiftOptions: swiftOptions,
+          kotlinOptions: kotlinOptions,
           documentationComments:
               _documentationCommentsParser(node.documentationComment?.tokens),
         );
@@ -2284,8 +2378,12 @@ ${_argParser.usage}''';
   /// used when running the code generator.  The optional parameter [adapters] allows you to
   /// customize the generators that pigeon will use. The optional parameter
   /// [sdkPath] allows you to specify the Dart SDK path.
-  static Future<int> runWithOptions(PigeonOptions options,
-      {List<GeneratorAdapter>? adapters, String? sdkPath}) async {
+  static Future<int> runWithOptions(
+    PigeonOptions options, {
+    List<GeneratorAdapter>? adapters,
+    String? sdkPath,
+    bool injectOverflowTypes = false,
+  }) async {
     final Pigeon pigeon = Pigeon.setup();
     if (options.debugGenerators ?? false) {
       generator_tools.debugGenerators = true;
@@ -2312,6 +2410,19 @@ ${_argParser.usage}''';
     final ParseResults parseResults =
         pigeon.parseFile(options.input!, sdkPath: sdkPath);
 
+    if (injectOverflowTypes) {
+      final List<Enum> addedEnums = List<Enum>.generate(
+        totalCustomCodecKeysAllowed - 1,
+        (final int tag) {
+          return Enum(
+              name: 'FillerEnum$tag',
+              members: <EnumMember>[EnumMember(name: 'FillerMember$tag')]);
+        },
+      );
+      addedEnums.addAll(parseResults.root.enums);
+      parseResults.root.enums = addedEnums;
+    }
+
     final List<Error> errors = <Error>[];
     errors.addAll(parseResults.errors);
 
@@ -2323,6 +2434,9 @@ ${_argParser.usage}''';
     }
 
     for (final GeneratorAdapter adapter in safeGeneratorAdapters) {
+      if (injectOverflowTypes && adapter is GObjectGeneratorAdapter) {
+        continue;
+      }
       final IOSink? sink = adapter.shouldGenerate(options, FileType.source);
       if (sink != null) {
         final List<Error> adapterErrors =

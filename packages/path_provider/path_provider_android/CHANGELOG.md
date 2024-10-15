@@ -1,3 +1,16 @@
+## 2.2.12
+
+* Updates Pigeon for non-nullable collection type support.
+
+## 2.2.11
+
+* Updates Java compatibility version to 11.
+* Updates minimum supported SDK version to Flutter 3.24/Dart 3.5.
+
+## 2.2.10
+
+* Updates annotations lib to 1.8.2.
+
 ## 2.2.9
 
 * Updates annotations lib to 1.8.1.

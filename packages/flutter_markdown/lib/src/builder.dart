@@ -362,7 +362,7 @@ class MarkdownBuilder implements md.NodeVisitor {
           style: _isInBlockquote
               ? styleSheet.blockquote!.merge(_inlines.last.style)
               : _inlines.last.style,
-          text: _isInBlockquote ? text.text : trimText(text.text),
+          text: trimText(text.text),
           recognizer: _linkHandlers.isNotEmpty ? _linkHandlers.last : null,
         ),
         textAlign: _textAlignForBlockTag(_currentBlockTag),
@@ -670,7 +670,15 @@ class MarkdownBuilder implements md.NodeVisitor {
         child: DefaultTextStyle(
           style: styleSheet.tableBody!,
           textAlign: textAlign,
-          child: Wrap(children: children as List<Widget>),
+          child: Wrap(
+            alignment: switch (textAlign) {
+              TextAlign.left => WrapAlignment.start,
+              TextAlign.center => WrapAlignment.center,
+              TextAlign.right => WrapAlignment.end,
+              _ => WrapAlignment.start,
+            },
+            children: children as List<Widget>,
+          ),
         ),
       ),
     );

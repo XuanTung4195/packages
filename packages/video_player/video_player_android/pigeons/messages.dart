@@ -50,7 +50,7 @@ class CreateMessage {
   List<Map<String?, String?>?>? extraDatasource;
   String? packageName;
   String? formatHint;
-  Map<String?, String?> httpHeaders;
+  Map<String, String> httpHeaders;
 }
 
 class SetDataSourceMessage {

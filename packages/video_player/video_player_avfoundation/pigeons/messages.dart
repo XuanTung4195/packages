@@ -24,13 +24,8 @@ class CreationOptions {
   String? audioUri;
   String? packageName;
   String? formatHint;
-  Map<String?, String?> httpHeaders;
+  Map<String, String> httpHeaders;
   Map<String?, Object?>? extraOption;
-}
-
-class MixWithOthersMessage {
-  MixWithOthersMessage(this.mixWithOthers);
-  bool mixWithOthers;
 }
 
 @HostApi(dartHostTestHandler: 'TestHostVideoPlayerApi')
