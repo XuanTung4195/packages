@@ -27,10 +27,7 @@ project.getTasks().withType(JavaCompile){
 apply plugin: 'com.android.library'
 
 android {
-    // Conditional for compatibility with AGP <4.2.
-    if (project.android.hasProperty("namespace")) {
-        namespace 'io.flutter.plugins.videoplayer'
-    }
+    namespace 'io.flutter.plugins.videoplayer'
     compileSdk 34
 
     defaultConfig {
@@ -48,7 +45,7 @@ android {
     }
 
     dependencies {
-        def exoplayer_version = "1.4.0"
+        def exoplayer_version = "1.4.1"
         implementation "androidx.media3:media3-exoplayer:${exoplayer_version}"
         implementation "androidx.media3:media3-exoplayer-hls:${exoplayer_version}"
         implementation "androidx.media3:media3-exoplayer-dash:${exoplayer_version}"
