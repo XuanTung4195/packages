@@ -127,10 +127,15 @@ final class VideoPlayer implements TextureRegistry.SurfaceProducer.Callback {
   // TODO(matanlurey): https://github.com/flutter/flutter/issues/155131.
   @SuppressWarnings({"deprecation", "removal"})
   public void onSurfaceCreated() {
+    /*
     if (savedStateDuring != null) {
       exoPlayer = createVideoPlayer();
       savedStateDuring.restore(exoPlayer);
       savedStateDuring = null;
+    }
+    */
+    if (exoPlayer != null) {
+      exoPlayer.setVideoSurface(surfaceProducer.getSurface());
     }
   }
 
@@ -138,8 +143,13 @@ final class VideoPlayer implements TextureRegistry.SurfaceProducer.Callback {
   public void onSurfaceDestroyed() {
     // Intentionally do not call pause/stop here, because the surface has already been released
     // at this point (see https://github.com/flutter/flutter/issues/156451).
+    /*
     savedStateDuring = ExoPlayerState.save(exoPlayer);
     exoPlayer.release();
+    */
+    if (exoPlayer != null) {
+      exoPlayer.setVideoSurface(null);
+    }
   }
 
   private ExoPlayer createVideoPlayer() {
