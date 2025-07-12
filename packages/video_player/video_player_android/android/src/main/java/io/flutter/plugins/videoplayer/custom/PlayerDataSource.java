@@ -119,11 +119,9 @@ public class PlayerDataSource {
                         new DefaultHlsPlaylistTracker(dataSourceFactory, loadErrorHandlingPolicy,
                                 playlistParserFactory,
                                 PLAYLIST_STUCK_TARGET_DURATION_COEFFICIENT));
-        /*
         if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
             factory.setPlaylistParserFactory(new CustomHlsPlaylistParserFactory());
         }
-        */
         return  factory;
     }
 

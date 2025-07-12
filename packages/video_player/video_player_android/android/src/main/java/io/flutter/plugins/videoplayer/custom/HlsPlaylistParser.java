@@ -67,10 +67,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import io.flutter.plugins.videoplayer.VideoPlayerPlugin;
 
 /** HLS playlists parsing logic. */
 @UnstableApi
@@ -380,6 +384,18 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
           sessionKeyDrmInitData.add(new DrmInitData(scheme, schemeData));
         }
       } else if (line.startsWith(TAG_STREAM_INF) || isIFrameOnlyVariant) {
+        /// TODO: Tungpx get language
+        String lang = parseOptionalStringAttr(line, REGEX_LANGUAGE, variableDefinitions);
+        if (lang == null || lang.isEmpty()) {
+          String youtubeLang = parseOptionalStringAttr(line, REGEX_YOUTUBE_LANGUAGE, variableDefinitions);
+          if (youtubeLang != null && !youtubeLang.isEmpty()) {
+            String[] parts = youtubeLang.split("\\.");
+            if (parts.length > 0) {
+              lang = parts[0];
+            }
+          }
+        }
+
         noClosedCaptions |= line.contains(ATTR_CLOSED_CAPTIONS_NONE);
         int roleFlags = isIFrameOnlyVariant ? C.ROLE_FLAG_TRICK_PLAY : 0;
         int peakBitrate = parseIntAttr(line, REGEX_BANDWIDTH);
@@ -438,6 +454,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
                 .setHeight(height)
                 .setFrameRate(frameRate)
                 .setRoleFlags(roleFlags)
+                .setLanguage(lang)
                 .build();
         Variant variant =
             new Variant(
@@ -602,6 +619,20 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
 
     if (noClosedCaptions) {
       muxedCaptionFormats = Collections.emptyList();
+    }
+
+    if (audios.isEmpty() && !deduplicatedVariants.isEmpty()) {
+      if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
+        ArrayList<Variant> filterList = new ArrayList<>();
+        for (Variant e : deduplicatedVariants) {
+          if (e.format != null && Objects.equals(e.format.language, VideoPlayerPlugin.preferredLanguage)) {
+            filterList.add(e);
+          }
+        }
+        if (!filterList.isEmpty()) {
+          deduplicatedVariants = filterList;
+        }
+      }
     }
 
     return new HlsMultivariantPlaylist(
