@@ -95,6 +95,12 @@ final class VideoPlayer {
     this.textureEntry = textureEntry;
     this.options = options;
     trackSelector = new DefaultTrackSelector(context);
+    if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
+      DefaultTrackSelector.Parameters parameters = trackSelector.buildUponParameters()
+              .setPreferredAudioLanguage(VideoPlayerPlugin.preferredLanguage)
+              .build();
+      trackSelector.setParameters(parameters);
+    }
     builder.setTrackSelector(trackSelector);
     ExoPlayer exoPlayer = builder.build();
 

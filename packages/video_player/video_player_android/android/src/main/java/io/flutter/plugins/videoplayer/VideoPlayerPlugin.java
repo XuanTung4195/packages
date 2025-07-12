@@ -39,6 +39,7 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
   private final LongSparseArray<VideoPlayer> videoPlayers = new LongSparseArray<>();
   private FlutterState flutterState;
   private final VideoPlayerOptions options = new VideoPlayerOptions();
+  public static String preferredLanguage = null;
 
   /** Register this with the v2 embedding for the plugin to respond to lifecycle callbacks. */
   public VideoPlayerPlugin() {}
@@ -107,6 +108,15 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
             flutterState.binaryMessenger, "flutter.io/videoPlayer/videoEvents" + handle.id());
 
     final VideoAsset videoAsset;
+
+    if (arg.getHttpHeaders() != null && arg.getHttpHeaders().containsKey("hl")) {
+      String language = arg.getHttpHeaders().get("hl");
+      if (language != null && !language.isEmpty()) {
+        preferredLanguage = language;
+        arg.getHttpHeaders().remove("hl");
+      }
+    }
+
     if (arg.getAsset() != null) {
       String assetLookupKey;
       if (arg.getPackageName() != null) {

@@ -24,6 +24,8 @@ import androidx.media3.exoplayer.source.SingleSampleMediaSource;
 
 import java.io.File;
 
+import io.flutter.plugins.videoplayer.VideoPlayerPlugin;
+
 public class PlayerDataSource {
     static boolean DEBUG = true;
 
@@ -110,13 +112,19 @@ public class PlayerDataSource {
     }
 
     @OptIn(markerClass = UnstableApi.class) public HlsMediaSource.Factory getLiveHlsMediaSourceFactory() {
-        return new HlsMediaSource.Factory(cachelessDataSourceFactory)
+        HlsMediaSource.Factory factory = new HlsMediaSource.Factory(cachelessDataSourceFactory)
                 .setAllowChunklessPreparation(true)
                 .setPlaylistTrackerFactory((dataSourceFactory, loadErrorHandlingPolicy,
                                             playlistParserFactory) ->
                         new DefaultHlsPlaylistTracker(dataSourceFactory, loadErrorHandlingPolicy,
                                 playlistParserFactory,
                                 PLAYLIST_STUCK_TARGET_DURATION_COEFFICIENT));
+        /*
+        if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
+            factory.setPlaylistParserFactory(new CustomHlsPlaylistParserFactory());
+        }
+        */
+        return  factory;
     }
 
     @UnstableApi
