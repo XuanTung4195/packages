@@ -723,6 +723,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     _updatePosition(position);
   }
 
+  Future<Map?> customMethod(String command, Map<String?, Object?>? data) async {
+    return _videoPlayerPlatform.customMethod(command, data, _textureId);
+  }
+
   /// Sets the audio volume of [this].
   ///
   /// [volume] indicates a value between 0.0 (silent) and 1.0 (full volume) on a
