@@ -626,7 +626,37 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 
 - (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data {
     NSLog(@"[customMethod] Called with command: %@, data: %@", command, data);
-    return nil;
+    AVMediaSelectionGroup *audioSelectionGroup = [[[_player currentItem] asset] mediaSelectionGroupForMediaCharacteristic: AVMediaCharacteristicAudible];
+    NSArray* options = audioSelectionGroup.options;
+
+    NSMutableArray *tracks = [NSMutableArray array];
+
+    for (int audioTrackIndex = 0; audioTrackIndex < [options count]; audioTrackIndex++) {
+        AVMediaSelectionOption* option = [options objectAtIndex:audioTrackIndex];
+        NSArray *metaDatas = [AVMetadataItem metadataItemsFromArray:option.commonMetadata withKey:@"title" keySpace:@"comn"];
+        if (metaDatas.count > 0) {
+            NSString *title = ((AVMetadataItem*)[metaDatas objectAtIndex:0]).stringValue;
+//            if ([name compare:title] == NSOrderedSame && audioTrackIndex == index ){
+//                [[_player currentItem] selectMediaOption:option inMediaSelectionGroup: audioSelectionGroup];
+//            }
+        }
+
+        NSMutableArray *debugMeta = [NSMutableArray array];
+        for (AVMetadataItem *item in metaDatas) {
+            NSString *keyString = [item.key isKindOfClass:[NSString class]] ? (NSString *)item.key : [[item.key description] copy];
+            [debugMeta addObject:@{
+                    @"key": keyString ?: @"(null)",
+                    @"keySpace": item.keySpace ?: @"(null)",
+                    @"value": item.stringValue ?: @"(null)",
+                    @"locale": item.locale.localeIdentifier ?: @"(null)"
+            }];
+        }
+
+        [tracks addObject:@{
+                @"metaDatas": debugMeta
+        }];
+    }
+    return @{ @"tracks": tracks };
 }
 
 - (CVPixelBufferRef)copyPixelBuffer {
