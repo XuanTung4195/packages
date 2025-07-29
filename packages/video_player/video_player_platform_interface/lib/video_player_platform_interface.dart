@@ -125,6 +125,10 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
     return 1;
   }
 
+  Future<Map?> customMethod(String command, Map<String?, Object?>? data, int textureId) async {
+    return {};
+  }
+
 }
 
 class _PlaceholderImplementation extends VideoPlayerPlatform {}

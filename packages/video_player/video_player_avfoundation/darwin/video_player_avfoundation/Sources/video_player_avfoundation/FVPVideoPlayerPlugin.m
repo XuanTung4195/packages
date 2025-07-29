@@ -624,6 +624,11 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   _player.rate = speed;
 }
 
+- (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data {
+    NSLog(@"[customMethod] Called with command: %@, data: %@", command, data);
+    return nil;
+}
+
 - (CVPixelBufferRef)copyPixelBuffer {
   CVPixelBufferRef buffer = NULL;
     if (!_enableFrameUpdate) {
@@ -894,6 +899,14 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 - (void)setPlaybackSpeed:(double)speed forPlayer:(NSInteger)textureId error:(FlutterError **)error {
   FVPVideoPlayer *player = self.playersByTextureId[@(textureId)];
   [player setPlaybackSpeed:speed];
+}
+
+- (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data forPlayer:(NSInteger)textureId error:(FlutterError *_Nullable *_Nonnull)error {
+  FVPVideoPlayer *player = self.playersByTextureId[@(textureId)];
+  if (!player) {
+    return nil;
+  }
+  return [player customMethod:command data:data];
 }
 
 - (void)playPlayer:(NSInteger)textureId error:(FlutterError **)error {

@@ -64,6 +64,8 @@ abstract class TestHostVideoPlayerApi {
 
   int enablePictureInPicture(String command, Map<String?, Object?>? data);
 
+  Map<Object?, Object?>? customMethod(String command, Map<String?, Object?>? data, int textureId);
+
   static void setUp(TestHostVideoPlayerApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
@@ -364,6 +366,35 @@ abstract class TestHostVideoPlayerApi {
           final Map<String?, Object?>? arg_data = (args[1] as Map<Object?, Object?>?)?.cast<String?, Object?>();
           try {
             final int output = api.enablePictureInPicture(arg_command!, arg_data);
+            return <Object?>[output];
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.customMethod$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        _testBinaryMessengerBinding!.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(__pigeon_channel, null);
+      } else {
+        _testBinaryMessengerBinding!.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(__pigeon_channel, (Object? message) async {
+          assert(message != null,
+          'Argument for dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.customMethod was null.');
+          final List<Object?> args = (message as List<Object?>?)!;
+          final String? arg_command = (args[0] as String?);
+          assert(arg_command != null,
+              'Argument for dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.customMethod was null, expected non-null String.');
+          final Map<String?, Object?>? arg_data = (args[1] as Map<Object?, Object?>?)?.cast<String?, Object?>();
+          final int? arg_textureId = (args[2] as int?);
+          assert(arg_textureId != null,
+              'Argument for dev.flutter.pigeon.video_player_avfoundation.AVFoundationVideoPlayerApi.customMethod was null, expected non-null int.');
+          try {
+            final Map<Object?, Object?>? output = api.customMethod(arg_command!, arg_data, arg_textureId!);
             return <Object?>[output];
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

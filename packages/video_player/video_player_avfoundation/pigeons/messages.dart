@@ -61,4 +61,6 @@ abstract class AVFoundationVideoPlayerApi {
   void setMixWithOthers(bool mixWithOthers);
   @ObjCSelector('enablePictureInPicture:data:')
   int enablePictureInPicture(String command, Map<String?, Object?>? data);
+  @ObjCSelector('customMethod:data:forPlayer:')
+  Map? customMethod(String command, Map<String?, Object?>? data, int textureId);
 }
