@@ -625,38 +625,42 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 - (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data {
-    NSLog(@"[customMethod] Called with command: %@, data: %@", command, data);
-    AVMediaSelectionGroup *audioSelectionGroup = [[[_player currentItem] asset] mediaSelectionGroupForMediaCharacteristic: AVMediaCharacteristicAudible];
-    NSArray* options = audioSelectionGroup.options;
+    AVPlayerItem *item = [_player currentItem];
+    if (!item) return nil;
 
-    NSMutableArray *tracks = [NSMutableArray array];
+    if ([command isEqualToString:@"changeLanguage"]) {
+        NSString *lang = nil;
+        if ([data isKindOfClass:[NSDictionary class]]) {
+            id langValue = data[@"lang"];
+            if ([langValue isKindOfClass:[NSString class]]) {
+                lang = (NSString *)langValue;
+                AVAsset *asset = [item asset];
+                if (!asset) return nil;
+                AVMediaSelectionGroup *audioSelectionGroup = [asset mediaSelectionGroupForMediaCharacteristic: AVMediaCharacteristicAudible];
+                if (!audioSelectionGroup) return nil;
+                NSArray* options = audioSelectionGroup.options;
+                if (!options || options.count == 0) return nil;
+                NSMutableArray<AVMediaSelectionOption *> *filteredOptions = [NSMutableArray array];
+                for (AVMediaSelectionOption *option in options) {
+                    NSLocale *locale = option.locale;
+                    if (locale != nil) {
+                        NSString *languageCode = locale.languageCode;
+                        if (languageCode && [languageCode.lowercaseString containsString:lang.lowercaseString]) {
+                            [filteredOptions addObject:option];
+                        }
+                    }
+                }
 
-    for (int audioTrackIndex = 0; audioTrackIndex < [options count]; audioTrackIndex++) {
-        AVMediaSelectionOption* option = [options objectAtIndex:audioTrackIndex];
-        NSArray *metaDatas = [AVMetadataItem metadataItemsFromArray:option.commonMetadata withKey:@"title" keySpace:@"comn"];
-        if (metaDatas.count > 0) {
-            NSString *title = ((AVMetadataItem*)[metaDatas objectAtIndex:0]).stringValue;
-//            if ([name compare:title] == NSOrderedSame && audioTrackIndex == index ){
-//                [[_player currentItem] selectMediaOption:option inMediaSelectionGroup: audioSelectionGroup];
-//            }
+                if (filteredOptions.count != options.count && filteredOptions.count > 0) {
+                    AVMediaSelectionOption *selectedOption = [filteredOptions lastObject];
+                    [[_player currentItem] selectMediaOption:selectedOption
+                                       inMediaSelectionGroup:audioSelectionGroup];
+                }
+                return @{@"status": @"ok", @"changeLanguage": lang};
+            }
         }
-
-        NSMutableArray *debugMeta = [NSMutableArray array];
-        for (AVMetadataItem *item in metaDatas) {
-            NSString *keyString = [item.key isKindOfClass:[NSString class]] ? (NSString *)item.key : [[item.key description] copy];
-            [debugMeta addObject:@{
-                    @"key": keyString ?: @"(null)",
-                    @"keySpace": item.keySpace ?: @"(null)",
-                    @"value": item.stringValue ?: @"(null)",
-                    @"locale": item.locale.localeIdentifier ?: @"(null)"
-            }];
-        }
-
-        [tracks addObject:@{
-                @"metaDatas": debugMeta
-        }];
     }
-    return @{ @"tracks": tracks };
+    return nil;
 }
 
 - (CVPixelBufferRef)copyPixelBuffer {
