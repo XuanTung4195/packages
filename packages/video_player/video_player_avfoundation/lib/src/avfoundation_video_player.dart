@@ -176,4 +176,8 @@ class AVFoundationVideoPlayer extends VideoPlayerPlatform {
     return _api.enablePictureInPicture(command, data);
   }
 
+  @override
+  Future<Map?> customMethod(String command, Map<String?, Object?>? data, int textureId) async {
+    return _api.customMethod(command, data, textureId);
+  }
 }

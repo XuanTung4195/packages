@@ -624,6 +624,45 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   _player.rate = speed;
 }
 
+- (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data {
+    AVPlayerItem *item = [_player currentItem];
+    if (!item) return nil;
+
+    if ([command isEqualToString:@"changeLanguage"]) {
+        NSString *lang = nil;
+        if ([data isKindOfClass:[NSDictionary class]]) {
+            id langValue = data[@"lang"];
+            if ([langValue isKindOfClass:[NSString class]]) {
+                lang = (NSString *)langValue;
+                AVAsset *asset = [item asset];
+                if (!asset) return nil;
+                AVMediaSelectionGroup *audioSelectionGroup = [asset mediaSelectionGroupForMediaCharacteristic: AVMediaCharacteristicAudible];
+                if (!audioSelectionGroup) return nil;
+                NSArray* options = audioSelectionGroup.options;
+                if (!options || options.count == 0) return nil;
+                NSMutableArray<AVMediaSelectionOption *> *filteredOptions = [NSMutableArray array];
+                for (AVMediaSelectionOption *option in options) {
+                    NSLocale *locale = option.locale;
+                    if (locale != nil) {
+                        NSString *languageCode = locale.languageCode;
+                        if (languageCode && [languageCode.lowercaseString containsString:lang.lowercaseString]) {
+                            [filteredOptions addObject:option];
+                        }
+                    }
+                }
+
+                if (filteredOptions.count != options.count && filteredOptions.count > 0) {
+                    AVMediaSelectionOption *selectedOption = [filteredOptions lastObject];
+                    [[_player currentItem] selectMediaOption:selectedOption
+                                       inMediaSelectionGroup:audioSelectionGroup];
+                }
+                return @{@"status": @"ok", @"changeLanguage": lang};
+            }
+        }
+    }
+    return nil;
+}
+
 - (CVPixelBufferRef)copyPixelBuffer {
   CVPixelBufferRef buffer = NULL;
     if (!_enableFrameUpdate) {
@@ -894,6 +933,14 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 - (void)setPlaybackSpeed:(double)speed forPlayer:(NSInteger)textureId error:(FlutterError **)error {
   FVPVideoPlayer *player = self.playersByTextureId[@(textureId)];
   [player setPlaybackSpeed:speed];
+}
+
+- (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data forPlayer:(NSInteger)textureId error:(FlutterError *_Nullable *_Nonnull)error {
+  FVPVideoPlayer *player = self.playersByTextureId[@(textureId)];
+  if (!player) {
+    return nil;
+  }
+  return [player customMethod:command data:data];
 }
 
 - (void)playPlayer:(NSInteger)textureId error:(FlutterError **)error {
