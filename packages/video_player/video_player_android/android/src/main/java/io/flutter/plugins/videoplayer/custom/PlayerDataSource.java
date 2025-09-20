@@ -115,9 +115,10 @@ public class PlayerDataSource {
         HlsMediaSource.Factory factory = new HlsMediaSource.Factory(cachelessDataSourceFactory)
                 .setAllowChunklessPreparation(true)
                 .setPlaylistTrackerFactory((dataSourceFactory, loadErrorHandlingPolicy,
-                                            playlistParserFactory) ->
+                                            playlistParserFactory, cmcdConfiguration) ->
                         new DefaultHlsPlaylistTracker(dataSourceFactory, loadErrorHandlingPolicy,
                                 playlistParserFactory,
+                                cmcdConfiguration,
                                 PLAYLIST_STUCK_TARGET_DURATION_COEFFICIENT));
         if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
             factory.setPlaylistParserFactory(new CustomHlsPlaylistParserFactory());

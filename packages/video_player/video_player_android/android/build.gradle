@@ -28,7 +28,7 @@ apply plugin: 'com.android.library'
 
 android {
     namespace 'io.flutter.plugins.videoplayer'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         minSdkVersion 19
@@ -45,7 +45,7 @@ android {
     }
 
     dependencies {
-        def exoplayer_version = "1.4.1"
+        def exoplayer_version = "1.8.0"
         implementation "androidx.media3:media3-exoplayer:${exoplayer_version}"
         implementation "androidx.media3:media3-exoplayer-hls:${exoplayer_version}"
         implementation "androidx.media3:media3-exoplayer-dash:${exoplayer_version}"
