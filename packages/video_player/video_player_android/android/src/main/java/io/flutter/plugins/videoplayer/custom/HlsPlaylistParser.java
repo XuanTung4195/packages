@@ -74,6 +74,9 @@ import java.util.regex.Pattern;
 // import org.checkerframework.checker.nullness.qual.EnsuresNonNullIf;
 // import org.checkerframework.checker.nullness.qual.PolyNull;
 import androidx.media3.exoplayer.hls.playlist.HlsPlaylist;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import io.flutter.plugins.videoplayer.VideoPlayerPlugin;
 
 /** HLS playlists parsing logic. */
 @UnstableApi
@@ -238,6 +241,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
             Pattern.compile("TYPE=(" + TYPE_PART + "|" + TYPE_MAP + ")");
     private static final Pattern REGEX_LANGUAGE =
             Pattern.compile("LANGUAGE=" + ATTR_QUOTED_STRING_VALUE_PATTERN);
+    private static final Pattern REGEX_YOUTUBE_LANGUAGE = Pattern.compile("YT-EXT-AUDIO-CONTENT-ID=\"(.+?)\"");
     private static final Pattern REGEX_NAME =
             Pattern.compile("NAME=" + ATTR_QUOTED_STRING_VALUE_PATTERN);
     private static final Pattern REGEX_GROUP_ID =
@@ -463,6 +467,18 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
                     sessionKeyDrmInitData.add(new DrmInitData(scheme, schemeData));
                 }
             } else if (line.startsWith(TAG_STREAM_INF) || isIFrameOnlyVariant) {
+                /// TODO: Tungpx get language
+                String lang = parseOptionalStringAttr(line, REGEX_LANGUAGE, variableDefinitions);
+                if (lang == null || lang.isEmpty()) {
+                    String youtubeLang = parseOptionalStringAttr(line, REGEX_YOUTUBE_LANGUAGE, variableDefinitions);
+                    if (youtubeLang != null && !youtubeLang.isEmpty()) {
+                        String[] parts = youtubeLang.split("\\.");
+                        if (parts.length > 0) {
+                            lang = parts[0];
+                        }
+                    }
+                }
+
                 noClosedCaptions |= line.contains(ATTR_CLOSED_CAPTIONS_NONE);
                 int roleFlags = isIFrameOnlyVariant ? C.ROLE_FLAG_TRICK_PLAY : 0;
                 int peakBitrate = parseIntAttr(line, REGEX_BANDWIDTH);
@@ -543,6 +559,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
                                 .setHeight(height)
                                 .setFrameRate(frameRate)
                                 .setRoleFlags(roleFlags)
+                                .setLanguage(lang)
                                 .build();
                 Variant variant =
                         new Variant(
@@ -586,6 +603,19 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
             line = mediaTags.get(i);
             String groupId = parseStringAttr(line, REGEX_GROUP_ID, variableDefinitions);
             String name = parseStringAttr(line, REGEX_NAME, variableDefinitions);
+
+            /// TODO: Tungpx get language
+            String lang = parseOptionalStringAttr(line, REGEX_LANGUAGE, variableDefinitions);
+            if (lang == null || lang.isEmpty()) {
+                String youtubeLang = parseOptionalStringAttr(line, REGEX_YOUTUBE_LANGUAGE, variableDefinitions);
+                if (youtubeLang != null && !youtubeLang.isEmpty()) {
+                    String[] parts = youtubeLang.split("\\.");
+                    if (parts.length > 0) {
+                        lang = parts[0];
+                    }
+                }
+            }
+
             Format.Builder formatBuilder =
                     new Format.Builder()
                             .setId(groupId + ":" + name)
@@ -593,7 +623,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
                             .setContainerMimeType(MimeTypes.APPLICATION_M3U8)
                             .setSelectionFlags(parseSelectionFlags(line))
                             .setRoleFlags(parseRoleFlags(line, variableDefinitions))
-                            .setLanguage(parseOptionalStringAttr(line, REGEX_LANGUAGE, variableDefinitions));
+                            .setLanguage(lang);
 
             @Nullable String referenceUri = parseOptionalStringAttr(line, REGEX_URI, variableDefinitions);
             @Nullable Uri uri = referenceUri == null ? null : UriUtil.resolveToUri(baseUri, referenceUri);
@@ -695,6 +725,21 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
 
         if (noClosedCaptions) {
             muxedCaptionFormats = Collections.emptyList();
+        }
+
+        /// Tungpx
+        if (audios.isEmpty() && !deduplicatedVariants.isEmpty()) {
+            if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
+                ArrayList<Variant> filterList = new ArrayList<>();
+                for (Variant e : deduplicatedVariants) {
+                    if (e.format != null && Objects.equals(e.format.language, VideoPlayerPlugin.preferredLanguage)) {
+                        filterList.add(e);
+                    }
+                }
+                if (!filterList.isEmpty()) {
+                    deduplicatedVariants = filterList;
+                }
+            }
         }
 
         return new HlsMultivariantPlaylist(
