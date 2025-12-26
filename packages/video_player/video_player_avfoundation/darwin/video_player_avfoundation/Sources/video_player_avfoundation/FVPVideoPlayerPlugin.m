@@ -316,6 +316,8 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                        displayLink:(FVPDisplayLink *)displayLink
                          avFactory:(id<FVPAVFactory>)avFactory
                          registrar:(NSObject<FlutterPluginRegistrar> *)registrar {
+  // Giới hạn buffer forward ~20s
+  item.preferredForwardBufferDuration = 20.0;
   self = [super init];
   NSAssert(self, @"super init cannot be nil");
   _enableFrameUpdate = YES;
@@ -362,6 +364,10 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   _playerLayer = [AVPlayerLayer playerLayerWithPlayer:_player];
   [self.flutterViewLayer addSublayer:_playerLayer];
 #if TARGET_OS_IOS
+    // Không chờ buffer dài để tránh stall
+    if (@available(iOS 10.0, *)) {
+        _player.automaticallyWaitsToMinimizeStalling = NO;
+    }
     if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
         _playerLayer.player = nil;
     }
