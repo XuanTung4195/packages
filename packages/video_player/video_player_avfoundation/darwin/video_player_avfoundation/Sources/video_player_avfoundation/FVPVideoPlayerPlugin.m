@@ -997,7 +997,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     if (rootWindow == nil) {
         return @0;
     }
-    
+    BOOL shouldDisable = NO;
     if (_pipManager == nil) {
         _pipManager = [[PipManager alloc] init];
         _pipManager.enablePlaceholderVideo = YES;
@@ -1009,9 +1009,12 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
         pipController.delegate = self;
         _pipManager.pipController = pipController;
         _pipManager.pipEnabled = NO;
+    } else {
+        shouldDisable = YES;
     }
     
     if (_pipManager.avPlayerLayer.superlayer != rootWindow.rootViewController.view.layer) {
+        shouldDisable = NO;
         [_pipManager.avPlayerLayer removeFromSuperlayer];
         [rootWindow.rootViewController.view.layer addSublayer:_pipManager.avPlayerLayer];
     }
@@ -1022,6 +1025,14 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
             [_pipManager.pipController stopPictureInPicture];
         }
     } else if ([command isEqualToString:@"enable"]) {
+        if (shouldDisable) {
+            if (_pipManager != nil && _pipManager.pipController != nil
+                && _pipManager.pipController.isPictureInPictureActive
+                && _mainPlayers.count > 0) {
+                [_pipManager.pipController stopPictureInPicture];
+                return @1;
+            }
+        }
         CGFloat x = 0;
         CGFloat y = 30;
         CGFloat width = [UIScreen mainScreen].bounds.size.width;
