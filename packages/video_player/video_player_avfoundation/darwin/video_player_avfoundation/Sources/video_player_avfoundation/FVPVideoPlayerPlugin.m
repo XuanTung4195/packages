@@ -364,9 +364,9 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   _playerLayer = [AVPlayerLayer playerLayerWithPlayer:_player];
   [self.flutterViewLayer addSublayer:_playerLayer];
 #if TARGET_OS_IOS
-    // Không chờ buffer dài để tránh stall
     if (@available(iOS 10.0, *)) {
-        _player.automaticallyWaitsToMinimizeStalling = NO;
+        /// set = NO bị lỗi khi seek ở background
+        _player.automaticallyWaitsToMinimizeStalling = YES;
     }
     if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
         _playerLayer.player = nil;
