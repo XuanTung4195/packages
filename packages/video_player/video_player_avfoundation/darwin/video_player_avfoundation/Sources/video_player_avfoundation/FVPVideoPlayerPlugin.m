@@ -316,8 +316,8 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
                        displayLink:(FVPDisplayLink *)displayLink
                          avFactory:(id<FVPAVFactory>)avFactory
                          registrar:(NSObject<FlutterPluginRegistrar> *)registrar {
-  // Giới hạn buffer forward ~30s
-  item.preferredForwardBufferDuration = 30.0;
+  // Giới hạn buffer forward ~50s
+  item.preferredForwardBufferDuration = 50.0;
   self = [super init];
   NSAssert(self, @"super init cannot be nil");
   _enableFrameUpdate = YES;
