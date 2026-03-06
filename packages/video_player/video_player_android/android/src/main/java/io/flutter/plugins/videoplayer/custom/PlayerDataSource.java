@@ -15,12 +15,20 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor;
 import androidx.media3.datasource.cache.SimpleCache;
 import androidx.media3.exoplayer.dash.DashMediaSource;
 import androidx.media3.exoplayer.dash.DefaultDashChunkSource;
+import androidx.media3.exoplayer.hls.HlsDataSourceFactory;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.exoplayer.hls.playlist.DefaultHlsPlaylistTracker;
+import androidx.media3.exoplayer.hls.playlist.HlsPlaylistParserFactory;
+import androidx.media3.exoplayer.hls.playlist.HlsPlaylistTracker;
 import androidx.media3.exoplayer.smoothstreaming.DefaultSsChunkSource;
 import androidx.media3.exoplayer.smoothstreaming.SsMediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.media3.exoplayer.source.SingleSampleMediaSource;
+import androidx.media3.exoplayer.upstream.CmcdConfiguration;
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy;
+import androidx.media3.exoplayer.util.ReleasableExecutor;
+
+import com.google.common.base.Supplier;
 
 import java.io.File;
 
@@ -114,12 +122,14 @@ public class PlayerDataSource {
     @OptIn(markerClass = UnstableApi.class) public HlsMediaSource.Factory getLiveHlsMediaSourceFactory() {
         HlsMediaSource.Factory factory = new HlsMediaSource.Factory(cachelessDataSourceFactory)
                 .setAllowChunklessPreparation(true)
-                .setPlaylistTrackerFactory((dataSourceFactory, loadErrorHandlingPolicy,
-                                            playlistParserFactory, cmcdConfiguration) ->
-                        new DefaultHlsPlaylistTracker(dataSourceFactory, loadErrorHandlingPolicy,
-                                playlistParserFactory,
-                                cmcdConfiguration,
-                                PLAYLIST_STUCK_TARGET_DURATION_COEFFICIENT));
+                .setPlaylistTrackerFactory((dataSourceFactory, loadErrorHandlingPolicy, playlistParserFactory, cmcdConfiguration, downloadExecutorSupplier) -> new DefaultHlsPlaylistTracker(
+                        dataSourceFactory,
+                        loadErrorHandlingPolicy,
+                        playlistParserFactory,
+                        null,
+                        PLAYLIST_STUCK_TARGET_DURATION_COEFFICIENT,
+                        null
+                ));
         if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
             factory.setPlaylistParserFactory(new CustomHlsPlaylistParserFactory());
         }
