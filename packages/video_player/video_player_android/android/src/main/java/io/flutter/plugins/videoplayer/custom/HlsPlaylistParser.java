@@ -77,6 +77,8 @@ import androidx.media3.exoplayer.hls.playlist.HlsPlaylist;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import io.flutter.plugins.videoplayer.VideoPlayerPlugin;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 /** HLS playlists parsing logic. */
 @UnstableApi
@@ -242,6 +244,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
     private static final Pattern REGEX_LANGUAGE =
             Pattern.compile("LANGUAGE=" + ATTR_QUOTED_STRING_VALUE_PATTERN);
     private static final Pattern REGEX_YOUTUBE_LANGUAGE = Pattern.compile("YT-EXT-AUDIO-CONTENT-ID=\"(.+?)\"");
+    private static final Pattern LANG_PATTERN = Pattern.compile("acont=([^:]+):lang=([a-zA-Z-]+)");
     private static final Pattern REGEX_NAME =
             Pattern.compile("NAME=" + ATTR_QUOTED_STRING_VALUE_PATTERN);
     private static final Pattern REGEX_GROUP_ID =
@@ -728,17 +731,45 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
         }
 
         /// Tungpx
-        if (audios.isEmpty() && !deduplicatedVariants.isEmpty()) {
-            if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
-                ArrayList<Variant> filterList = new ArrayList<>();
-                for (Variant e : deduplicatedVariants) {
-                    if (e.format != null && Objects.equals(e.format.language, VideoPlayerPlugin.preferredLanguage)) {
+        if (!deduplicatedVariants.isEmpty()) {
+            ArrayList<Variant> filterList = new ArrayList<>();
+            ArrayList<Variant> originalList = new ArrayList<>();
+            for (Variant e : deduplicatedVariants) {
+                String language = null;
+                boolean isOriginal = false;
+                if (e.format != null && e.format.language != null) {
+                    language = e.format.language;
+                }
+                if (e.url != null) {
+                    try {
+                        String decoded = URLDecoder.decode(e.url.toString(), StandardCharsets.UTF_8.name());
+                        Matcher matcher = LANG_PATTERN.matcher(decoded);
+                        if (matcher.find()) {
+                            String acont = matcher.group(1);
+                            String lang = matcher.group(2);
+                            if (Objects.equals("original", acont)) {
+                                isOriginal = true;
+                            }
+                            if (lang != null && language == null) {
+                                language = lang;
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
+                    if (language != null && Objects.equals(language, VideoPlayerPlugin.preferredLanguage)) {
                         filterList.add(e);
                     }
                 }
-                if (!filterList.isEmpty()) {
-                    deduplicatedVariants = filterList;
+                if (isOriginal) {
+                    originalList.add(e);
                 }
+            }
+            if (!filterList.isEmpty()) {
+                deduplicatedVariants = filterList;
+            } else if (!originalList.isEmpty()) {
+                deduplicatedVariants = originalList;
             }
         }
 
