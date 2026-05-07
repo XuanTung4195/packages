@@ -146,6 +146,33 @@ static void *presentationSizeContext = &presentationSizeContext;
 static void *durationContext = &durationContext;
 static void *playbackLikelyToKeepUpContext = &playbackLikelyToKeepUpContext;
 static void *rateContext = &rateContext;
+static void *pictureInPicturePossibleContext = &pictureInPicturePossibleContext;
+
+#if TARGET_OS_IOS
+static UIWindow *FVPActiveWindow() {
+  if (@available(iOS 13.0, *)) {
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+      if (![scene isKindOfClass:[UIWindowScene class]]) {
+        continue;
+      }
+      UIWindowScene *windowScene = (UIWindowScene *)scene;
+      if (scene.activationState == UISceneActivationStateForegroundActive) {
+        for (UIWindow *candidate in windowScene.windows) {
+          if (candidate.isKeyWindow) {
+            return candidate;
+          }
+        }
+      }
+    }
+    for (UIWindow *window in [UIApplication sharedApplication].windows) {
+        if (window.isKeyWindow) {
+            return window;
+        }
+    }
+  }
+  return UIApplication.sharedApplication.keyWindow;
+}
+#endif
 
 @implementation FVPVideoPlayer
 - (instancetype)initWithAsset:(NSString *)asset
@@ -173,6 +200,12 @@ static void *rateContext = &rateContext;
 - (void)dealloc {
   if (!_disposed) {
     [self removeKeyValueObservers];
+  }
+  if (self.didEnterBackgroundObserver) {
+    [[NSNotificationCenter defaultCenter] removeObserver:self.didEnterBackgroundObserver];
+  }
+  if (self.willEnterForegroundObserver) {
+    [[NSNotificationCenter defaultCenter] removeObserver:self.willEnterForegroundObserver];
   }
 }
 
@@ -737,6 +770,14 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   [_playerLayer removeFromSuperlayer];
   _displayLink = nil;
   [self removeKeyValueObservers];
+  if (self.didEnterBackgroundObserver) {
+    [[NSNotificationCenter defaultCenter] removeObserver:self.didEnterBackgroundObserver];
+    self.didEnterBackgroundObserver = nil;
+  }
+  if (self.willEnterForegroundObserver) {
+    [[NSNotificationCenter defaultCenter] removeObserver:self.willEnterForegroundObserver];
+    self.willEnterForegroundObserver = nil;
+  }
 
   [self.player replaceCurrentItemWithPlayerItem:nil];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -757,12 +798,12 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
 #if TARGET_OS_OSX
   return self.registrar.view.layer;
 #else
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-  // TODO(hellohuanlin): Provide a non-deprecated codepath. See
-  // https://github.com/flutter/flutter/issues/104117
-  UIViewController *root = UIApplication.sharedApplication.keyWindow.rootViewController;
-#pragma clang diagnostic pop
+  UIWindow *window = FVPActiveWindow();
+  UIViewController *root = window.rootViewController;
+  if (root != nil) {
+    return root.view.layer;
+  }
+  root = UIApplication.sharedApplication.keyWindow.rootViewController;
   return root.view.layer;
 #endif
 }
@@ -856,6 +897,7 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
         [player dispose];
       }];
   [self.playersByTextureId removeAllObjects];
+  [_mainPlayers removeAllObjects];
 }
 
 - (nullable NSNumber *)createWithOptions:(nonnull FVPCreationOptions *)options
@@ -986,15 +1028,12 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     // [[AVAudioSession sharedInstance] setCategory: AVAudioSessionCategoryPlayback error:nil];
     // [[AVAudioSession sharedInstance] setActive:YES error:nil];
     
-    UIWindow *rootWindow = nil;
-    for (UIWindow *window in [UIApplication sharedApplication].windows) {
-        if (window.isKeyWindow) {
-            rootWindow = window;
-            break;
-        }
-    }
-    
+    UIWindow *rootWindow = FVPActiveWindow();
     if (rootWindow == nil) {
+        return @0;
+    }
+    UIViewController *rootViewController = rootWindow.rootViewController;
+    if (rootViewController == nil) {
         return @0;
     }
     BOOL shouldDisable = NO;
@@ -1013,10 +1052,10 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
         shouldDisable = YES;
     }
     
-    if (_pipManager.avPlayerLayer.superlayer != rootWindow.rootViewController.view.layer) {
+    if (_pipManager.avPlayerLayer.superlayer != rootViewController.view.layer) {
         shouldDisable = NO;
         [_pipManager.avPlayerLayer removeFromSuperlayer];
-        [rootWindow.rootViewController.view.layer addSublayer:_pipManager.avPlayerLayer];
+        [rootViewController.view.layer addSublayer:_pipManager.avPlayerLayer];
     }
     
     if ([command isEqualToString:@"disable"]) {

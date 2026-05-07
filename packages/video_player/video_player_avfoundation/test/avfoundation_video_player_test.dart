@@ -90,6 +90,20 @@ class _ApiLogger implements TestHostVideoPlayerApi {
     playbackSpeed = speed;
     this.textureId = textureId;
   }
+
+  @override
+  int enablePictureInPicture(String command, Map<String?, Object?>? data) {
+    log.add('enablePictureInPicture');
+    return 0;
+  }
+
+  @override
+  Map<Object?, Object?>? customMethod(
+      String command, Map<String?, Object?>? data, int textureId) {
+    log.add('customMethod');
+    this.textureId = textureId;
+    return null;
+  }
 }
 
 void main() {
