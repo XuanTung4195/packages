@@ -81,6 +81,12 @@ import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist.Interstitial;
 import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist.Part;
 import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist.RenditionReport;
 import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist.Segment;
+
+import java.util.Objects;
+import java.util.stream.Collectors;
+import io.flutter.plugins.videoplayer.VideoPlayerPlugin;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 //
 
 /** HLS playlists parsing logic. */
@@ -319,6 +325,10 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
     private final HlsMultivariantPlaylist multivariantPlaylist;
     @Nullable private final HlsMediaPlaylist previousMediaPlaylist;
 
+    // TUNGPX
+    private static final Pattern REGEX_YOUTUBE_LANGUAGE = Pattern.compile("YT-EXT-AUDIO-CONTENT-ID=\"(.+?)\"");
+    private static final Pattern LANG_PATTERN = Pattern.compile("acont=([^:]+):lang=([a-zA-Z-]+)");
+    //
     /**
      * Creates an instance where media playlists are parsed without inheriting attributes from a
      * multivariant playlist.
@@ -506,6 +516,18 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
                     sessionKeyDrmInitData.add(new DrmInitData(scheme, schemeData));
                 }
             } else if (line.startsWith(TAG_STREAM_INF) || isIFrameOnlyVariant) {
+                // TUNGPX get language
+                String lang = parseOptionalStringAttr(line, REGEX_LANGUAGE, variableDefinitions, matcherCache);
+                if (lang == null || lang.isEmpty()) {
+                    String youtubeLang = parseOptionalStringAttr(line, REGEX_YOUTUBE_LANGUAGE, variableDefinitions, matcherCache);
+                    if (youtubeLang != null && !youtubeLang.isEmpty()) {
+                        String[] parts = youtubeLang.split("\\.");
+                        if (parts.length > 0) {
+                            lang = parts[0];
+                        }
+                    }
+                }
+                //
                 noClosedCaptions |= line.contains(ATTR_CLOSED_CAPTIONS_NONE);
                 int roleFlags = isIFrameOnlyVariant ? C.ROLE_FLAG_TRICK_PLAY : 0;
                 int peakBitrate = parseIntAttr(line, REGEX_BANDWIDTH, matcherCache);
@@ -604,6 +626,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
                                 .setFrameRate(frameRate)
                                 .setRoleFlags(roleFlags)
                                 .setColorInfo(colorInfo)
+                                .setLanguage(lang) // TUNGPX
                                 .build();
                 Variant variant =
                         new Variant(
@@ -654,6 +677,18 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
             line = mediaTags.get(i);
             String groupId = parseStringAttr(line, REGEX_GROUP_ID, variableDefinitions, matcherCache);
             String name = parseStringAttr(line, REGEX_NAME, variableDefinitions, matcherCache);
+            // TUNGPX get language
+            String lang = parseOptionalStringAttr(line, REGEX_LANGUAGE, variableDefinitions, matcherCache);
+            if (lang == null || lang.isEmpty()) {
+                String youtubeLang = parseOptionalStringAttr(line, REGEX_YOUTUBE_LANGUAGE, variableDefinitions, matcherCache);
+                if (youtubeLang != null && !youtubeLang.isEmpty()) {
+                    String[] parts = youtubeLang.split("\\.");
+                    if (parts.length > 0) {
+                        lang = parts[0];
+                    }
+                }
+            }
+            //
             @Nullable
             String stableRenditionId =
                     parseOptionalStringAttr(
@@ -665,8 +700,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
                             .setContainerMimeType(MimeTypes.APPLICATION_M3U8)
                             .setSelectionFlags(parseSelectionFlags(line, matcherCache))
                             .setRoleFlags(parseRoleFlags(line, variableDefinitions, matcherCache))
-                            .setLanguage(
-                                    parseOptionalStringAttr(line, REGEX_LANGUAGE, variableDefinitions, matcherCache));
+                            .setLanguage(lang); // TUNGPX
 
             @Nullable
             String referenceUri =
@@ -773,6 +807,50 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
         if (noClosedCaptions) {
             muxedCaptionFormats = Collections.emptyList();
         }
+
+        // TUNGPX
+        if (!deduplicatedVariants.isEmpty()) {
+            ArrayList<Variant> filterList = new ArrayList<>();
+            ArrayList<Variant> originalList = new ArrayList<>();
+            for (Variant e : deduplicatedVariants) {
+                String language = null;
+                boolean isOriginal = false;
+                if (e.format != null && e.format.language != null) {
+                    language = e.format.language;
+                }
+                if (e.url != null) {
+                    try {
+                        String decoded = URLDecoder.decode(e.url.toString(), StandardCharsets.UTF_8.name());
+                        Matcher matcher = LANG_PATTERN.matcher(decoded);
+                        if (matcher.find()) {
+                            String acont = matcher.group(1);
+                            String lang = matcher.group(2);
+                            if (Objects.equals("original", acont)) {
+                                isOriginal = true;
+                            }
+                            if (lang != null && language == null) {
+                                language = lang;
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
+                    if (language != null && Objects.equals(language, VideoPlayerPlugin.preferredLanguage)) {
+                        filterList.add(e);
+                    }
+                }
+                if (isOriginal) {
+                    originalList.add(e);
+                }
+            }
+            if (!filterList.isEmpty()) {
+                deduplicatedVariants = filterList;
+            } else if (!originalList.isEmpty()) {
+                deduplicatedVariants = originalList;
+            }
+        }
+        //
 
         return new HlsMultivariantPlaylist(
                 /* baseUri= */ playlistUri.toString(),

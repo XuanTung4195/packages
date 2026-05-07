@@ -45,7 +45,7 @@ android {
     }
 
     dependencies {
-        def exoplayer_version = "1.9.2"
+        def exoplayer_version = "1.10.0"
         implementation "androidx.media3:media3-exoplayer:${exoplayer_version}"
         implementation "androidx.media3:media3-exoplayer-hls:${exoplayer_version}"
         implementation "androidx.media3:media3-exoplayer-dash:${exoplayer_version}"
