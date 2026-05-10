@@ -106,7 +106,7 @@ final class VideoPlayer {
 
     if (extraDatasource == null || extraDatasource.isEmpty()) {
       String dataSource = asset.assetUrl;
-      if (dataSource != null && dataSource.endsWith(".m3u8")) {
+      if (dataSource != null && (dataSource.endsWith(".m3u8") || dataSource.contains("index.m3u8"))) {
         playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
         MediaSource mediaSource = BuildDataSourceHelper.getHlsMediaSource(playerDataSource, dataSource);
         exoPlayer.setMediaSource(mediaSource);
