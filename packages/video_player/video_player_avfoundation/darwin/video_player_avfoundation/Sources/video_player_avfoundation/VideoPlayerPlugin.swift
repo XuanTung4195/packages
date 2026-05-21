@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import AVFoundation
+import AVKit
 
 #if os(iOS)
   import Flutter
@@ -70,6 +71,12 @@ public final class VideoPlayerPlugin: NSObject, FlutterPlugin, AVFoundationVideo
   private var nextPlayerIdentifier: Int64 = 1
   var playersByIdentifier: [Int64: FVPVideoPlayer] = [:]
 
+/// TUNGPX
+    var mainPlayers: [FVPVideoPlayer] = []
+    var pipManager: PipManager? = nil
+    var registrar: FlutterPluginRegistrar? = nil
+///
+
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = VideoPlayerPlugin(registrar: registrar)
     // Publish the instance so that it receives detachFromEngine.
@@ -108,6 +115,7 @@ public final class VideoPlayerPlugin: NSObject, FlutterPlugin, AVFoundationVideo
       viewProvider: FVPDefaultViewProvider(registrar: registrar),
       assetProvider: DefaultAssetProvider(registrar: registrar)
     )
+    self.registrar = registrar;
   }
 
   init(
@@ -161,11 +169,48 @@ public final class VideoPlayerPlugin: NSObject, FlutterPlugin, AVFoundationVideo
       player.disposeWithError(&error)
     }
     playersByIdentifier.removeAll()
+    mainPlayers.removeAll();
   }
+
+func _onCreatedNewMainPlayer(_ player: FVPVideoPlayer, _ options: CreationOptions) {
+    if options.extraOption != nil &&
+       options.extraOption?["playerType"] as? String == "main" {
+        mainPlayers.append(player)
+
+        // Show in pip player
+        _showInPipWhenReady(player)
+    }
+}
+
+private func _showInPipWhenReady(_ player: FVPVideoPlayer) {
+    if pipManager == nil ||
+       !pipManager!.pipEnabled ||
+       pipManager!.pipController == nil ||
+       !pipManager!.pipController!.isPictureInPictureActive ||
+       !mainPlayers.contains(where: { $0 === player }) {
+        return
+    }
+    if player.getAVPlayerLayer() == nil {
+        return
+    }
+    let avPlayer = player.player
+    if avPlayer.currentItem?.status == .readyToPlay {
+        player.getAVPlayerLayer()?.player = nil
+        player.setEnableFrameUpdate(false)
+        pipManager!.setCurrentPlayer(player)
+        return
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self, weak player] in
+        guard let self = self,
+              let player = player else { return }
+            self._showInPipWhenReady(player)
+    }
+}
 
   func createPlatformViewPlayer(options params: CreationOptions) throws -> Int64 {
     let item = try playerItem(with: params)
     let player = FVPVideoPlayer(playerItem: item, avFactory: avFactory, viewProvider: viewProvider)
+    _onCreatedNewMainPlayer(player, params);
     return configurePlayer(player, extraDisposeHandler: nil)
   }
 
@@ -190,7 +235,7 @@ public final class VideoPlayerPlugin: NSObject, FlutterPlugin, AVFoundationVideo
     let playerId = configurePlayer(player) { [weak self] in
       self?.textureRegistry.unregisterTexture(textureId)
     }
-
+    _onCreatedNewMainPlayer(player, creationOptions);
     return TexturePlayerIds(playerId: playerId, textureId: textureId)
   }
 
@@ -252,7 +297,15 @@ public final class VideoPlayerPlugin: NSObject, FlutterPlugin, AVFoundationVideo
     let channelSuffix = "\(playerId)"
     // Set up the player-specific API handler, and its onDispose unregistration.
     SetUpFVPVideoPlayerInstanceApiWithSuffix(binaryMessenger, player, channelSuffix)
-
+    /// TUNGPX
+    player.beforeDisposed = { [weak self, weak player] in
+      guard let strongSelf = self , let player = player else { return }
+      if strongSelf.pipManager != nil && strongSelf.mainPlayers.contains(where: { $0 === player }) {
+          strongSelf.pipManager!.onDisposePlayer(player)
+      }
+      strongSelf.mainPlayers.removeAll { $0 === player }
+    }
+    ///
     player.onDisposed = { [weak self] in
       guard let strongSelf = self else { return }
       SetUpFVPVideoPlayerInstanceApiWithSuffix(strongSelf.binaryMessenger, nil, channelSuffix)
@@ -277,8 +330,157 @@ public final class VideoPlayerPlugin: NSObject, FlutterPlugin, AVFoundationVideo
       throw PigeonError(code: "video_player", message: "Invalid URI", details: nil)
     }
     let asset = avFactory.urlAsset(with: url, options: itemOptions)
-    return avFactory.playerItem(with: asset)
+    return avFactory.playerItem(with: asset, extraOption: options.extraOption)
   }
+
+    /// TUNGPX
+    func FVPActiveWindow() -> UIWindow? {
+        if #available(iOS 13.0, *) {
+            for scene in UIApplication.shared.connectedScenes {
+                guard let windowScene = scene as? UIWindowScene else {
+                    continue
+                }
+
+                if scene.activationState == .foregroundActive {
+                    for candidate in windowScene.windows {
+                        if candidate.isKeyWindow {
+                            return candidate
+                        }
+                    }
+                }
+            }
+
+            for window in UIApplication.shared.windows {
+                if window.isKeyWindow {
+                    return window
+                }
+            }
+        }
+
+        return UIApplication.shared.keyWindow
+    }
+
+    func enablePictureInPicture(command: String, data: [String?: Any?]?) throws -> Int64 {
+    #if os(iOS)
+        NSLog("enablePictureInPicture command: %@", command)
+
+        guard AVPictureInPictureController.isPictureInPictureSupported() else {
+            NSLog("PictureInPicture IS NOT Supported")
+            return 0
+        }
+
+        guard let rootWindow = FVPActiveWindow(),
+              let rootViewController = rootWindow.rootViewController else {
+            return 0
+        }
+
+        var shouldDisable = false
+
+        if pipManager == nil {
+            let manager = PipManager()
+            manager.enablePlaceholderVideo = true
+            manager.registrar = registrar
+
+            let playerLayer = AVPlayerLayer(player: nil)
+            playerLayer.isHidden = true
+            manager.avPlayerLayer = playerLayer
+
+            let pipController = AVPictureInPictureController(playerLayer: playerLayer)
+            pipController?.delegate = self
+            manager.pipController = pipController
+            manager.pipEnabled = false
+
+            pipManager = manager
+        } else {
+            shouldDisable = true
+        }
+
+        guard let pipManager = pipManager else { return 0 }
+
+        if pipManager.avPlayerLayer?.superlayer !== rootViewController.view.layer {
+            shouldDisable = false
+            pipManager.avPlayerLayer?.removeFromSuperlayer()
+            if let playerLayer = pipManager.avPlayerLayer {
+                rootViewController.view.layer.addSublayer(playerLayer)
+            }
+        }
+
+        switch command {
+        case "disable":
+            if let controller = pipManager.pipController {
+                pipManager.onPipDidStop()
+                controller.stopPictureInPicture()
+            }
+
+        case "enable":
+            if shouldDisable {
+                if let controller = pipManager.pipController,
+                   controller.isPictureInPictureActive,
+                   mainPlayers.count > 0 {
+                    controller.stopPictureInPicture()
+                    return 1
+                }
+            }
+
+            var x: CGFloat = 0
+            var y: CGFloat = 30
+            var width: CGFloat = UIScreen.main.bounds.width
+            var height: CGFloat = width * 9 / 16
+
+            if let left = data?["left"] as? NSNumber {
+                x = CGFloat(left.doubleValue)
+            }
+            if let top = data?["top"] as? NSNumber {
+                y = CGFloat(top.doubleValue)
+            }
+            if let mWidth = data?["width"] as? NSNumber {
+                width = CGFloat(mWidth.doubleValue)
+            }
+            if let mHeight = data?["height"] as? NSNumber {
+                height = CGFloat(mHeight.doubleValue)
+            }
+
+            pipManager.avPlayerLayer?.frame = CGRect(x: x, y: y, width: width, height: height)
+
+            if mainPlayers.count > 0,
+               let player = mainPlayers.last {
+                if let playerLayer = player.getAVPlayerLayer() {
+                    playerLayer.player = nil
+                }
+                pipManager.setCurrentPlayer(player)
+            } else {
+                pipManager.avPlayerLayer?.player = nil
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                NSLog("pipController startPictureInPicture")
+                self.pipManager?.pipController?.startPictureInPicture()
+            }
+
+            return 1
+
+        case "enablePlaceholderVideo":
+            pipManager.enablePlaceholderVideo = true
+
+        case "disablePlaceholderVideo":
+            pipManager.enablePlaceholderVideo = false
+
+        case "playBlackScreenVideo":
+            pipManager.playBlackScreenVideo()
+
+        case "disposeBlackScreenVideo":
+            pipManager.disposeBlackScreenVideo()
+
+        default:
+            break
+        }
+
+        return 1
+
+    #else
+        return 0
+    #endif
+    }
 }
 
 #if os(iOS)
@@ -321,3 +523,47 @@ public final class VideoPlayerPlugin: NSObject, FlutterPlugin, AVFoundationVideo
     try? session.setCategory(finalCategory, with: newOptions)
   }
 #endif
+
+
+/// TUNGPX
+extension VideoPlayerPlugin: AVPictureInPictureControllerDelegate {
+    public func pictureInPictureControllerWillStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        NSLog("pictureInPictureControllerWillStartPictureInPicture")
+        pipManager?.pipEnabled = true
+    }
+
+    public func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        NSLog("pictureInPictureControllerDidStartPictureInPicture")
+        pipManager?.pipEnabled = true
+        pipManager?.onPipDidStart()
+    }
+
+    public func pictureInPictureController(
+        _ pictureInPictureController: AVPictureInPictureController,
+        failedToStartPictureInPictureWithError error: Error
+    ) {
+        NSLog("failedToStartPictureInPictureWithError %@", error.localizedDescription)
+        pipManager?.pipEnabled = false
+        pipManager?.onPipDidStop()
+    }
+
+    public func pictureInPictureControllerWillStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        NSLog("pictureInPictureControllerWillStopPictureInPicture")
+        pipManager?.pipEnabled = false
+    }
+
+    public func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        NSLog("pictureInPictureControllerDidStopPictureInPicture")
+        pipManager?.pipEnabled = false
+        pipManager?.onPipDidStop()
+    }
+
+    public func pictureInPictureController(
+        _ pictureInPictureController: AVPictureInPictureController,
+        restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void
+    ) {
+        NSLog("restoreUserInterfaceForPictureInPictureStopWithCompletionHandler")
+        completionHandler(true)
+    }
+}
+///

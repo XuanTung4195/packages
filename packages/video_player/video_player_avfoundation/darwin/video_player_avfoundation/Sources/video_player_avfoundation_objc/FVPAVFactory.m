@@ -139,10 +139,28 @@
   return [[FVPDefaultAVAsset alloc] initWithAsset:[AVURLAsset URLAssetWithURL:URL options:options]];
 }
 
-- (NSObject<FVPAVPlayerItem> *)playerItemWithAsset:(NSObject<FVPAVAsset> *)asset {
+- (NSObject<FVPAVPlayerItem> *)playerItemWithAsset:(NSObject<FVPAVAsset> *)asset
+        extraOption:(NSDictionary<NSString *, id> * _Nullable)extraOption{
   // The default factory always vends FVPDefault* implementations, so it is safe to cast back.
+    AVPlayerItem *item = [AVPlayerItem playerItemWithAsset:((FVPDefaultAVAsset *)asset).asset];
+    if (extraOption != nil) {
+        id bitrate = extraOption[@"bitrate"];
+        id width = extraOption[@"width"];
+        id height = extraOption[@"height"];
+        if ([bitrate isKindOfClass:[NSNumber class]]
+            && [width isKindOfClass:[NSNumber class]]
+            && [height isKindOfClass:[NSNumber class]]) {
+            NSInteger _bitrate = [bitrate integerValue];
+            NSInteger _width = [width integerValue];
+            NSInteger _height = [height integerValue];
+            item.preferredPeakBitRate = _bitrate;
+            item.preferredMaximumResolution = CGSizeMake(_width, _height);
+        }
+    }
+    // Giới hạn buffer forward ~50s
+    item.preferredForwardBufferDuration = 50.0;
   return [[FVPDefaultAVPlayerItem alloc]
-      initWithPlayerItem:[AVPlayerItem playerItemWithAsset:((FVPDefaultAVAsset *)asset).asset]];
+      initWithPlayerItem: item];
 }
 
 - (AVPlayer *)playerWithPlayerItem:(NSObject<FVPAVPlayerItem> *)playerItem {

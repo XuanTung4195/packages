@@ -77,6 +77,9 @@ static NSDictionary<NSString *, NSValue *> *FVPGetPlayerItemObservations(void) {
   self = [super init];
   NSAssert(self, @"super init cannot be nil");
 
+  /// TUNGPX
+  _enableFrameUpdate = YES;
+  ///
   _viewProvider = viewProvider;
 
   NSObject<FVPAVAsset> *asset = item.asset;
@@ -138,6 +141,32 @@ static NSDictionary<NSString *, NSValue *> *FVPGetPlayerItemObservations(void) {
   _player = [avFactory playerWithPlayerItem:item];
   _player.actionAtItemEnd = AVPlayerActionAtItemEndNone;
 
+  /// TUNGPX
+#if TARGET_OS_IOS
+    if (@available(iOS 10.0, *)) {
+        /// set = NO bị lỗi khi seek ở background
+        _player.automaticallyWaitsToMinimizeStalling = YES;
+    }
+//    if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
+//        _playerLayer.player = nil;
+//    }
+
+    __weak typeof(self) weakSelf = self;
+    self.didEnterBackgroundObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
+        AVPlayerLayer* playerLayer = [weakSelf getAVPlayerLayer];
+        if (playerLayer != nil) {
+            playerLayer.player = nil;
+        }
+    }];
+
+    self.willEnterForegroundObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
+        AVPlayerLayer* playerLayer = [weakSelf getAVPlayerLayer];
+        if (playerLayer != nil) {
+            playerLayer.player = weakSelf.player;
+        }
+    }];
+#endif
+  ///
   // Configure output.
   NSDictionary *pixBuffAttributes = @{
     (id)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA),
@@ -156,6 +185,14 @@ static NSDictionary<NSString *, NSValue *> *FVPGetPlayerItemObservations(void) {
     FVPRemoveKeyValueObservers(self, FVPGetPlayerItemObservations(), _player.currentItem);
     FVPRemoveKeyValueObservers(self, FVPGetPlayerObservations(), _player);
   }
+  /// TUNGPX
+    if (self.didEnterBackgroundObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.didEnterBackgroundObserver];
+    }
+    if (self.willEnterForegroundObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.willEnterForegroundObserver];
+    }
+  ///
 }
 
 - (void)disposeWithError:(FlutterError *_Nullable *_Nonnull)error {
@@ -164,12 +201,24 @@ static NSDictionary<NSString *, NSValue *> *FVPGetPlayerItemObservations(void) {
     return;
   }
   _disposed = YES;
-
+  /// TUNGPX
+    if (_beforeDisposed) {
+        _beforeDisposed();
+    }
+  ///
   if (_listenersRegistered) {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     FVPRemoveKeyValueObservers(self, FVPGetPlayerItemObservations(), self.player.currentItem);
     FVPRemoveKeyValueObservers(self, FVPGetPlayerObservations(), self.player);
   }
+    if (self.didEnterBackgroundObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.didEnterBackgroundObserver];
+        self.didEnterBackgroundObserver = nil;
+    }
+    if (self.willEnterForegroundObserver) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self.willEnterForegroundObserver];
+        self.willEnterForegroundObserver = nil;
+    }
 
   [self.player replaceCurrentItemWithPlayerItem:nil];
 
@@ -266,10 +315,58 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   return videoComposition;
 }
 
+/// TUNGPX
+- (void)setEnableFrameUpdate:(BOOL)enable {
+    _enableFrameUpdate = enable;
+}
+
+- (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data error:(FlutterError *_Nullable *_Nonnull)error {
+    AVPlayerItem *item = [_player currentItem];
+    if (!item) return nil;
+
+    if ([command isEqualToString:@"changeLanguage"]) {
+        NSString *lang = nil;
+        if ([data isKindOfClass:[NSDictionary class]]) {
+            id langValue = data[@"lang"];
+            if ([langValue isKindOfClass:[NSString class]]) {
+                lang = (NSString *)langValue;
+                AVAsset *asset = [item asset];
+                if (!asset) return nil;
+                AVMediaSelectionGroup *audioSelectionGroup = [asset mediaSelectionGroupForMediaCharacteristic: AVMediaCharacteristicAudible];
+                if (!audioSelectionGroup) return nil;
+                NSArray* options = audioSelectionGroup.options;
+                if (!options || options.count == 0) return nil;
+                NSMutableArray<AVMediaSelectionOption *> *filteredOptions = [NSMutableArray array];
+                for (AVMediaSelectionOption *option in options) {
+                    NSLocale *locale = option.locale;
+                    if (locale != nil) {
+                        NSString *languageCode = locale.languageCode;
+                        if (languageCode && [languageCode.lowercaseString containsString:lang.lowercaseString]) {
+                            [filteredOptions addObject:option];
+                        }
+                    }
+                }
+
+                if (filteredOptions.count != options.count && filteredOptions.count > 0) {
+                    AVMediaSelectionOption *selectedOption = [filteredOptions lastObject];
+                    [[_player currentItem] selectMediaOption:selectedOption
+                                       inMediaSelectionGroup:audioSelectionGroup];
+                }
+                return @{@"status": @"ok", @"changeLanguage": lang};
+            }
+        }
+    }
+    return nil;
+}
+
 - (void)observeValueForKeyPath:(NSString *)path
                       ofObject:(id)object
                         change:(NSDictionary *)change
                        context:(void *)context {
+    /// TUNGPX
+    AVPlayerLayer* playerLayer = [self getAVPlayerLayer];
+    BOOL inPipMode = playerLayer != nil && playerLayer.player == nil;
+    ///
   if (context == timeRangeContext) {
     NSMutableArray<NSArray<NSNumber *> *> *values = [[NSMutableArray alloc] init];
     for (NSValue *rangeValue in [object loadedTimeRanges]) {
@@ -284,7 +381,9 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
     AVPlayerItem *item = (AVPlayerItem *)object;
     [self reportStatusForPlayerItem:item];
   } else if (context == playbackLikelyToKeepUpContext) {
+    if (!inPipMode) { /// TUNGPX
     [self updatePlayingState];
+    }
     if ([[_player currentItem] isPlaybackLikelyToKeepUp]) {
       [self.eventListener videoPlayerDidEndBuffering];
     } else {
@@ -514,7 +613,20 @@ NS_INLINE CGFloat radiansToDegrees(CGFloat radians) {
   // Note: https://openradar.appspot.com/radar?id=4968600712511488
   // `[AVPlayerItem duration]` can be `kCMTimeIndefinite`,
   // use `[[AVPlayerItem asset] duration]` instead.
-  return FVPCMTimeToMillis([[[_player currentItem] asset] duration]);
+  // return FVPCMTimeToMillis([[[_player currentItem] asset] duration]);
+  /// TUNGPX
+    CMTime duration = [[[_player currentItem] asset] duration];
+    if (!CMTIME_IS_INDEFINITE(duration)) {
+        return FVPCMTimeToMillis(duration);
+    }
+    NSArray *seekableRanges = [_player currentItem].seekableTimeRanges;
+    if (seekableRanges.count > 0) {
+        CMTimeRange lastRange = [[seekableRanges lastObject] CMTimeRangeValue];
+        CMTime endTime = CMTimeAdd(lastRange.start, lastRange.duration);
+        return FVPCMTimeToMillis(endTime);
+    }
+    return FVPCMTimeToMillis(duration);
+  /// TUNGPX
 }
 
 @end

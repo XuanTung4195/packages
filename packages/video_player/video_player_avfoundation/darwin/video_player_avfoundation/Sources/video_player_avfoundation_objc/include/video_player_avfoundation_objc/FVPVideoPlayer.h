@@ -42,6 +42,16 @@ NS_ASSUME_NONNULL_BEGIN
                          avFactory:(id<FVPAVFactory>)avFactory
                       viewProvider:(NSObject<FVPViewProvider> *)viewProvider;
 
+/// TUNGPX
+/// Pause the copy pixcel so the flutter texture is not updated, used when pip is enabled
+@property(nonatomic, readonly) BOOL enableFrameUpdate;
+@property (nonatomic, strong) id didEnterBackgroundObserver;
+@property (nonatomic, strong) id willEnterForegroundObserver;
+@property(nonatomic, nullable, copy) void (^beforeDisposed)(void);
+- (nullable AVPlayerLayer *)getAVPlayerLayer;
+- (void)setEnableFrameUpdate:(BOOL)enable;
+- (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data error:(FlutterError *_Nullable *_Nonnull)error;
+///
 @end
 
 NS_ASSUME_NONNULL_END

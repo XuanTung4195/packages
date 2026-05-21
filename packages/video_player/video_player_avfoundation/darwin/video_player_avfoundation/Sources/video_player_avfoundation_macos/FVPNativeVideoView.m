@@ -22,4 +22,8 @@
   return [[AVPlayerLayer alloc] init];
 }
 
+- (nullable AVPlayerLayer *)getAVPlayerLayer {
+  return ((AVPlayerLayer *)self.layer);
+}
+
 @end

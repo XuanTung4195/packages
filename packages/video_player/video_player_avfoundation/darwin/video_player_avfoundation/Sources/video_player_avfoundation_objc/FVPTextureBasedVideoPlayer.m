@@ -125,6 +125,11 @@
 - (CVPixelBufferRef)copyPixelBuffer {
   // If the difference between target time and current time is longer than this fraction of frame
   // duration then reset target time.
+  /// TUNGPX
+    if (!self.enableFrameUpdate) {
+        return NULL;
+    }
+  ///
   const float resetThreshold = 0.5;
 
   // Ensure video sampling at regular intervals. This function is not called at exact time intervals
@@ -213,6 +218,10 @@
       [self disposeWithError:&error];
     }
   });
+}
+
+- (nullable AVPlayerLayer *)getAVPlayerLayer {
+    return self.playerLayer;
 }
 
 @end

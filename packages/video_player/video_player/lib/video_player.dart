@@ -399,6 +399,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
        dataSourceType = platform_interface.DataSourceType.asset,
        formatHint = null,
        httpHeaders = const <String, String>{},
+       this.audioDataSource = null,
+       this.extraDatasource = null,
        super(const VideoPlayerValue(duration: Duration.zero));
 
   /// Constructs a [VideoPlayerController] playing a network video.
@@ -425,6 +427,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }) : _closedCaptionFileFuture = closedCaptionFile,
        dataSourceType = platform_interface.DataSourceType.network,
        package = null,
+       audioDataSource = null,
+       extraDatasource = null,
        super(const VideoPlayerValue(duration: Duration.zero));
 
   /// Constructs a [VideoPlayerController] playing a network video.
@@ -443,10 +447,14 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     this.videoPlayerOptions,
     this.httpHeaders = const <String, String>{},
     this.viewType = platform_interface.VideoViewType.textureView,
+    /// TUNGPX
+    Uri? audio,
+    this.extraDatasource,
   }) : _closedCaptionFileFuture = closedCaptionFile,
        dataSource = url.toString(),
        dataSourceType = platform_interface.DataSourceType.network,
        package = null,
+       audioDataSource = audio?.toString(), /// TUNGPX
        super(const VideoPlayerValue(duration: Duration.zero));
 
   /// Constructs a [VideoPlayerController] playing a video from a file.
@@ -464,6 +472,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
        dataSourceType = platform_interface.DataSourceType.file,
        package = null,
        formatHint = null,
+       audioDataSource = null, /// TUNGPX
+       extraDatasource = null,
        super(const VideoPlayerValue(duration: Duration.zero));
 
   /// Constructs a [VideoPlayerController] playing a video from a contentUri.
@@ -485,6 +495,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
        package = null,
        formatHint = null,
        httpHeaders = const <String, String>{},
+       audioDataSource = null, /// TUNGPX
+       extraDatasource = null,
        super(const VideoPlayerValue(duration: Duration.zero));
 
   /// The URI to the video file. This will be in different formats depending on
@@ -514,6 +526,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   ///
   /// Platforms that do not support the request view type will ignore this.
   final platform_interface.VideoViewType viewType;
+
+  /// TUNGPX
+  final String? audioDataSource;
+  final List<Map<String, String>>? extraDatasource;
 
   Future<ClosedCaptionFile>? _closedCaptionFileFuture;
   ClosedCaptionFile? _closedCaptionFile;
@@ -559,6 +575,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           uri: dataSource,
           formatHint: formatHint,
           httpHeaders: httpHeaders,
+          /// TUNGPX
+          audioUri: audioDataSource,
+          extraDatasource: extraDatasource,
+          extraOption: videoPlayerOptions?.extraOption,
         );
       case platform_interface.DataSourceType.file:
         dataSourceDescription = platform_interface.DataSource(
@@ -570,6 +590,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         dataSourceDescription = platform_interface.DataSource(
           sourceType: platform_interface.DataSourceType.contentUri,
           uri: dataSource,
+          /// TUNGPX
+          extraOption: videoPlayerOptions?.extraOption,
         );
     }
 
@@ -1028,6 +1050,69 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   bool get _isDisposedOrNotInitialized => _isDisposed || !value.isInitialized;
+
+  /// TUNGPX
+  /// Change the data source of the player
+  Future<void> changeDataSource(Uri url, {
+    Uri? audio,
+    List<Map<String, String>>? extraDatasource,
+    platform_interface.VideoFormat? formatHint,
+    Future<ClosedCaptionFile>? closedCaptionFile,
+    Map<String, String> httpHeaders = const <String, String>{},
+  }) async {
+    final String dataSource = url.toString();
+    final String? audioDataSource = audio?.toString();
+    late platform_interface.DataSource dataSourceDescription;
+    const dataSourceType = platform_interface.DataSourceType.network;
+    switch (dataSourceType) {
+      case platform_interface.DataSourceType.asset:
+        dataSourceDescription = platform_interface.DataSource(
+          sourceType: platform_interface.DataSourceType.asset,
+          asset: dataSource,
+          package: package,
+        );
+      case platform_interface.DataSourceType.network:
+        dataSourceDescription = platform_interface.DataSource(
+          sourceType: platform_interface.DataSourceType.network,
+          uri: dataSource,
+          audioUri: audioDataSource,
+          extraDatasource: extraDatasource,
+          formatHint: formatHint,
+          httpHeaders: httpHeaders,
+        );
+      case platform_interface.DataSourceType.file:
+        dataSourceDescription = platform_interface.DataSource(
+          sourceType: platform_interface.DataSourceType.file,
+          uri: dataSource,
+          httpHeaders: httpHeaders,
+        );
+      case platform_interface.DataSourceType.contentUri:
+        dataSourceDescription = platform_interface.DataSource(
+          sourceType: platform_interface.DataSourceType.contentUri,
+          uri: dataSource,
+        );
+    }
+    await _videoPlayerPlatform.changeDataSource(_playerId, dataSourceDescription);
+  }
+
+  /// setVideoResolution
+  Future<void> setVideoResolution(int width, int height) async {
+    return _videoPlayerPlatform.setVideoResolution(_playerId, width, height);
+  }
+
+  /// getVideoResolutions
+  Future<List<platform_interface.VideoResolution>> getVideoResolutions() async {
+    return _videoPlayerPlatform.getVideoResolutions(_playerId);
+  }
+
+  Future<Map?> customMethod(String command, Map<String?, Object?>? data) async {
+    return _videoPlayerPlatform.customMethod(command, data, _playerId);
+  }
+
+  /// enablePictureInPictureMode
+  static Future<int> enablePictureInPictureMode(String command, Map<String?, Object?>? data) async {
+    return _videoPlayerPlatform.enablePictureInPicture(command, data);
+  }
 }
 
 class _VideoAppLifeCycleObserver extends Object with WidgetsBindingObserver {

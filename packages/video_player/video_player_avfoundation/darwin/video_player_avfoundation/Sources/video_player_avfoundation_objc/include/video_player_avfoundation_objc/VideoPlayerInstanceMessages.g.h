@@ -19,16 +19,16 @@ NS_ASSUME_NONNULL_BEGIN
 @interface FVPMediaSelectionAudioTrackData : NSObject
 /// `init` unavailable to enforce nonnull fields, see the `make` class method.
 - (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)makeWithIndex:(NSInteger)index
-                  displayName:(nullable NSString *)displayName
-                 languageCode:(nullable NSString *)languageCode
-                   isSelected:(BOOL)isSelected
-          commonMetadataTitle:(nullable NSString *)commonMetadataTitle;
-@property(nonatomic, assign) NSInteger index;
-@property(nonatomic, copy, nullable) NSString *displayName;
-@property(nonatomic, copy, nullable) NSString *languageCode;
-@property(nonatomic, assign) BOOL isSelected;
-@property(nonatomic, copy, nullable) NSString *commonMetadataTitle;
++ (instancetype)makeWithIndex:(NSInteger )index
+    displayName:(nullable NSString *)displayName
+    languageCode:(nullable NSString *)languageCode
+    isSelected:(BOOL )isSelected
+    commonMetadataTitle:(nullable NSString *)commonMetadataTitle;
+@property(nonatomic, assign) NSInteger  index;
+@property(nonatomic, copy, nullable) NSString * displayName;
+@property(nonatomic, copy, nullable) NSString * languageCode;
+@property(nonatomic, assign) BOOL  isSelected;
+@property(nonatomic, copy, nullable) NSString * commonMetadataTitle;
 @end
 
 /// The codec used by all APIs.
@@ -45,17 +45,14 @@ NSObject<FlutterMessageCodec> *FVPGetVideoPlayerInstanceMessagesCodec(void);
 - (void)pauseWithError:(FlutterError *_Nullable *_Nonnull)error;
 - (void)disposeWithError:(FlutterError *_Nullable *_Nonnull)error;
 /// @return `nil` only when `error != nil`.
-- (nullable NSArray<FVPMediaSelectionAudioTrackData *> *)getAudioTracks:
-    (FlutterError *_Nullable *_Nonnull)error;
-- (void)selectAudioTrackAtIndex:(NSInteger)trackIndex
-                          error:(FlutterError *_Nullable *_Nonnull)error;
+- (nullable NSArray<FVPMediaSelectionAudioTrackData *> *)getAudioTracks:(FlutterError *_Nullable *_Nonnull)error;
+- (void)selectAudioTrackAtIndex:(NSInteger)trackIndex error:(FlutterError *_Nullable *_Nonnull)error;
+/// TUNGPX flutter pub run pigeon --input pigeons/messages.dart
+- (nullable NSDictionary *)customMethod:(NSString *)command data:(nullable NSDictionary<NSString *, id> *)data error:(FlutterError *_Nullable *_Nonnull)error;
 @end
 
-extern void SetUpFVPVideoPlayerInstanceApi(id<FlutterBinaryMessenger> binaryMessenger,
-                                           NSObject<FVPVideoPlayerInstanceApi> *_Nullable api);
+extern void SetUpFVPVideoPlayerInstanceApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<FVPVideoPlayerInstanceApi> *_Nullable api);
 
-extern void SetUpFVPVideoPlayerInstanceApiWithSuffix(
-    id<FlutterBinaryMessenger> binaryMessenger, NSObject<FVPVideoPlayerInstanceApi> *_Nullable api,
-    NSString *messageChannelSuffix);
+extern void SetUpFVPVideoPlayerInstanceApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger, NSObject<FVPVideoPlayerInstanceApi> *_Nullable api, NSString *messageChannelSuffix);
 
 NS_ASSUME_NONNULL_END

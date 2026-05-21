@@ -96,6 +96,8 @@ class AVFoundationVideoPlayer extends VideoPlayerPlatform {
     final pigeonCreationOptions = CreationOptions(
       uri: uri,
       httpHeaders: dataSource.httpHeaders,
+      audioUri: dataSource.audioUri, /// TUNGPX
+      extraOption: dataSource.extraOption, /// TUNGPX
     );
 
     final int playerId;
@@ -248,6 +250,17 @@ class AVFoundationVideoPlayer extends VideoPlayerPlatform {
     final _PlayerInstance? player = _players[id];
     return player ?? (throw StateError('No active player with ID $id.'));
   }
+
+  /// TUNGPX
+  @override
+  Future<int> enablePictureInPicture(String command, Map<String?, Object?>? data) async {
+    return _api.enablePictureInPicture(command, data);
+  }
+
+  @override
+  Future<Map?> customMethod(String command, Map<String?, Object?>? data, int playerId) async {
+    return _playerWith(id: playerId).customMethod(command, data);
+  }
 }
 
 /// An instance of a video player, corresponding to a single player ID in
@@ -344,6 +357,11 @@ class _PlayerInstance {
       Duration(milliseconds: startMilliseconds),
       Duration(milliseconds: startMilliseconds + durationMilliseconds),
     );
+  }
+
+  /// TUNGPX
+  Future<Map?> customMethod(String command, Map<String?, Object?>? data) async {
+    return _api.customMethod(command, data);
   }
 }
 

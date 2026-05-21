@@ -58,4 +58,7 @@ abstract class VideoPlayerInstanceApi {
   List<MediaSelectionAudioTrackData> getAudioTracks();
   @ObjCSelector('selectAudioTrackAtIndex:')
   void selectAudioTrack(int trackIndex);
+  /// TUNGPX flutter pub run pigeon --input pigeons/messages.dart
+  @ObjCSelector('customMethod:data:')
+  Map? customMethod(String command, Map<String?, Object?>? data);
 }

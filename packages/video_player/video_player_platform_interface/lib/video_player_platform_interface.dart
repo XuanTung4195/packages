@@ -188,6 +188,29 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   bool isVideoTrackSupportAvailable() {
     return false;
   }
+
+  /// TUNGPX
+  /// Change the data source of the player
+  Future<void> changeDataSource(int playerId, DataSource dataSource) {
+    throw UnimplementedError('create() has not been implemented.');
+  }
+
+  Future<void> setVideoResolution(int playerId, int width, int height) {
+    return Future.value();
+  }
+
+  Future<List<VideoResolution>> getVideoResolutions(int playerId) {
+    return Future.value([]);
+  }
+
+  Future<int> enablePictureInPicture(String command, Map<String?, Object?>? data) async {
+    return 1;
+  }
+
+  Future<Map?> customMethod(String command, Map<String?, Object?>? data, int playerId) async {
+    return {};
+  }
+  ///
 }
 
 class _PlaceholderImplementation extends VideoPlayerPlatform {}
@@ -215,6 +238,9 @@ class DataSource {
     this.asset,
     this.package,
     this.httpHeaders = const <String, String>{},
+    this.audioUri,
+    this.extraDatasource,
+    this.extraOption,
   });
 
   /// The way in which the video was originally loaded.
@@ -244,6 +270,12 @@ class DataSource {
   /// The package that the asset was loaded from. Only set for
   /// [DataSourceType.asset] videos.
   final String? package;
+
+  /// TUNGPX
+  final String? audioUri;
+  final List<Map<String, String>>? extraDatasource;
+  final Map<String, Object?>? extraOption;
+  ///
 }
 
 /// The way in which the video was originally loaded.
@@ -471,6 +503,7 @@ class VideoPlayerOptions {
     this.mixWithOthers = false,
     this.allowBackgroundPlayback = false,
     this.webOptions,
+    this.extraOption, /// TUNGPX
   });
 
   /// Set this to true to keep playing video in background, when app goes in background.
@@ -486,6 +519,10 @@ class VideoPlayerOptions {
 
   /// Additional web controls
   final VideoPlayerWebOptions? webOptions;
+
+  /// TUNGPX
+  final Map<String, Object?>? extraOption;
+  ///
 }
 
 /// [VideoPlayerWebOptions] can be optionally used to set additional web settings
@@ -786,3 +823,11 @@ class VideoTrack {
       'frameRate: $frameRate, '
       'codec: $codec)';
 }
+
+/// TUNGPX
+class VideoResolution {
+  VideoResolution(this.width, this.height);
+  int width;
+  int height;
+}
+///

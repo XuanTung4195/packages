@@ -26,6 +26,9 @@ class CreationOptions {
 
   String uri;
   Map<String, String> httpHeaders;
+  /// TUNGPX
+  String? audioUri;
+  Map<String, Object?>? extraOption;
 }
 
 class TexturePlayerIds {
@@ -49,4 +52,7 @@ abstract class AVFoundationVideoPlayerApi {
   void setMixWithOthers(bool mixWithOthers);
   @SwiftFunction('fileURLForAsset(name:package:)')
   String? getAssetUrl(String asset, String? package);
+  /// TUNGPX
+  @ObjCSelector('enablePictureInPicture:data:')
+  int enablePictureInPicture(String command, Map<String?, Object?>? data);
 }

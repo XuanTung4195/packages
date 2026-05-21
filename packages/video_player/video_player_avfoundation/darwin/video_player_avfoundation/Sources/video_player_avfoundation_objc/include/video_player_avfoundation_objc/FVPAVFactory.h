@@ -89,7 +89,8 @@ NS_ASSUME_NONNULL_BEGIN
                                   options:(nullable NSDictionary<NSString *, id> *)options;
 
 /// Creates and returns a wrapped AVPlayerItem instance with the specified asset.
-- (NSObject<FVPAVPlayerItem> *)playerItemWithAsset:(NSObject<FVPAVAsset> *)asset;
+- (NSObject<FVPAVPlayerItem> *)playerItemWithAsset:(NSObject<FVPAVAsset> *)asset
+        extraOption:(NSDictionary<NSString *, id> * _Nullable)extraOption; /// TUNGPX
 
 /// Creates and returns an AVPlayer instance with the specified player item.
 - (AVPlayer *)playerWithPlayerItem:(NSObject<FVPAVPlayerItem> *)playerItem;
