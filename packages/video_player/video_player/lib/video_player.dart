@@ -635,6 +635,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             errorDescription: null,
             isCompleted: false,
           );
+          /*
           assert(
             !initializingCompleter.isCompleted,
             'VideoPlayerController already initialized. This is typically a '
@@ -646,6 +647,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             throw StateError('VideoPlayerController already initialized');
           }
           initializingCompleter.complete(null);
+          */
+          /// TUNGPX
+          if (!initializingCompleter.isCompleted) {
+            initializingCompleter.complete(null);
+          }
           _applyLooping();
           _applyVolume();
           _applyPlayPause();
