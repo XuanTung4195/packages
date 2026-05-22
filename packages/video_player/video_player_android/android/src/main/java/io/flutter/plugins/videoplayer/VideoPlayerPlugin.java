@@ -19,6 +19,13 @@ import io.flutter.plugins.videoplayer.platformview.PlatformViewVideoPlayer;
 import io.flutter.plugins.videoplayer.texture.TextureVideoPlayer;
 import io.flutter.view.TextureRegistry;
 
+/// TUNGPX
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import io.flutter.plugins.videoplayer.SetDataSourceMessage;
+import io.flutter.plugins.videoplayer.HttpVideoAsset;
+
 /** Android platform implementation of the VideoPlayerPlugin. */
 public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
   private static final String TAG = "VideoPlayerPlugin";
@@ -26,6 +33,9 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
   private FlutterState flutterState;
   private final VideoPlayerOptions sharedOptions = new VideoPlayerOptions();
   private long nextPlayerIdentifier = 1;
+  ///  TUNGPX
+  public static String preferredLanguage = null;
+  public static Context applicationContext = null;
 
   /** Register this with the v2 embedding for the plugin to respond to lifecycle callbacks. */
   public VideoPlayerPlugin() {}
@@ -41,6 +51,9 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
             injector.flutterLoader()::getLookupKeyForAsset,
             binding.getTextureRegistry());
     flutterState.startListening(this, binding.getBinaryMessenger());
+
+    /// TUNGPX
+    applicationContext = binding.getApplicationContext();
 
     binding
         .getPlatformViewRegistry()
@@ -83,6 +96,7 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
   @OptIn(markerClass = UnstableApi.class)
   @Override
   public long createForPlatformView(@NonNull CreationOptions options) {
+    handleCreationOptions(options);
     final VideoAsset videoAsset = videoAssetWithOptions(options);
 
     long id = nextPlayerIdentifier++;
@@ -101,6 +115,7 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
   @OptIn(markerClass = UnstableApi.class)
   @Override
   public @NonNull TexturePlayerIds createForTextureView(@NonNull CreationOptions options) {
+    handleCreationOptions(options);
     final VideoAsset videoAsset = videoAssetWithOptions(options);
 
     long id = nextPlayerIdentifier++;
@@ -140,8 +155,12 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
             break;
         }
       }
-      return VideoAsset.fromRemoteUrl(
-          uri, streamingFormat, options.getHttpHeaders(), options.getUserAgent());
+      /// TUNGPX VideoAsset sẽ tạo MediaSource.Factory nên ta bắt đầu custom ở đây
+      return new HttpVideoAsset(uri, streamingFormat, new HashMap<>(options.getHttpHeaders()),
+              options.getUserAgent(), options);
+      ///
+//    return VideoAsset.fromRemoteUrl(
+//        uri, streamingFormat, options.getHttpHeaders(), options.getUserAgent());
     }
   }
 
@@ -227,5 +246,16 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
     void stopListening(BinaryMessenger messenger) {
       AndroidVideoPlayerApi.Companion.setUp(messenger, null);
     }
+  }
+
+  ///  TUNGPX
+  private void handleCreationOptions(CreationOptions arg) {
+      if (arg.getHttpHeaders() != null && arg.getHttpHeaders().containsKey("hl")) {
+          String language = arg.getHttpHeaders().get("hl");
+          if (language != null && !language.isEmpty()) {
+              preferredLanguage = language;
+              arg.getHttpHeaders().remove("hl");
+          }
+      }
   }
 }

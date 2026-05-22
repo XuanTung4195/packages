@@ -73,6 +73,10 @@ class CreationOptions {
   PlatformVideoFormat? formatHint;
   Map<String, String> httpHeaders;
   String? userAgent;
+  /// TUNGPX
+  String? audioUri;
+  List<Map<String?, String?>?>? extraDatasource;
+  ///
 }
 
 class TexturePlayerIds {
@@ -192,9 +196,38 @@ abstract class VideoPlayerInstanceApi {
 
   /// Selects which audio track is chosen for playback from its [groupIndex] and [trackIndex]
   void selectAudioTrack(int groupIndex, int trackIndex);
+
+  /// TUNGPX
+  void changeDataSource(SetDataSourceMessage msg);
+  void setVideoResolution(VideoResolutionMessage msg);
+  List<VideoResolutionData> getVideoResolutions();
+  ///
 }
 
 @EventChannelApi()
 abstract class VideoEventChannel {
   PlatformVideoEvent videoEvents();
 }
+
+/// TUNGPX flutter pub run pigeon --input pigeons/messages.dart
+class SetDataSourceMessage {
+  SetDataSourceMessage({required this.httpHeaders});
+  String? uri;
+  String? audioUri;
+  List<Map<String?, String?>?>? extraDatasource;
+  String? formatHint;
+  Map<String?, String?> httpHeaders;
+}
+
+class VideoResolutionMessage {
+  VideoResolutionMessage(this.width, this.height);
+  int width;
+  int height;
+}
+
+class VideoResolutionData {
+  VideoResolutionData(this.width, this.height);
+  int width;
+  int height;
+}
+///

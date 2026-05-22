@@ -24,6 +24,29 @@ import io.flutter.view.TextureRegistry.SurfaceProducer;
 import java.util.ArrayList;
 import java.util.List;
 
+/// TUNGPX
+import android.util.Log;
+import androidx.media3.common.Format;
+import androidx.media3.common.TrackGroup;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.TrackGroupArray;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
+import androidx.media3.exoplayer.trackselection.MappingTrackSelector;
+import androidx.media3.exoplayer.trackselection.TrackSelector;
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
+import androidx.media3.common.TrackSelectionParameters;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import io.flutter.plugins.videoplayer.custom.BuildDataSourceHelper;
+import io.flutter.plugins.videoplayer.custom.PlayerDataSource;
+import io.flutter.plugins.videoplayer.VideoResolutionData;
+import androidx.media3.exoplayer.ExoPlayer;
+import io.flutter.view.TextureRegistry;
+import android.content.Context;
 /**
  * A class responsible for managing video playback using {@link ExoPlayer}.
  *
@@ -36,6 +59,8 @@ public abstract class VideoPlayer implements VideoPlayerInstanceApi {
   @NonNull protected ExoPlayer exoPlayer;
   // TODO: Migrate to stable API, see https://github.com/flutter/flutter/issues/147039.
   @UnstableApi @Nullable protected DefaultTrackSelector trackSelector;
+
+  private PlayerDataSource playerDataSource;
 
   /** A closure-compatible signature since {@link java.util.function.Supplier} is API level 24. */
   public interface ExoPlayerProvider {
@@ -73,6 +98,14 @@ public abstract class VideoPlayer implements VideoPlayerInstanceApi {
     // Try to get the track selector from the ExoPlayer if it was built with one
     if (exoPlayer.getTrackSelector() instanceof DefaultTrackSelector) {
       trackSelector = (DefaultTrackSelector) exoPlayer.getTrackSelector();
+        /// TUNGPX set default language
+        if (VideoPlayerPlugin.preferredLanguage != null && !VideoPlayerPlugin.preferredLanguage.isEmpty()) {
+            DefaultTrackSelector.Parameters parameters = trackSelector.buildUponParameters()
+                    .setPreferredAudioLanguage(VideoPlayerPlugin.preferredLanguage)
+                    .build();
+            trackSelector.setParameters(parameters);
+        }
+        ///
     }
 
     exoPlayer.setMediaItem(mediaItem);
@@ -241,4 +274,101 @@ public abstract class VideoPlayer implements VideoPlayerInstanceApi {
     }
     exoPlayer.release();
   }
+/// TUNGPX
+    public void setVideoResolution(VideoResolutionMessage msg) {
+        int targetHeight = (int) msg.getHeight();
+        Tracks tracks = exoPlayer.getCurrentTracks();
+        for (Tracks.Group group : tracks.getGroups()) {
+            if (group.getType() != C.TRACK_TYPE_VIDEO) {
+                continue;
+            }
+            for (int i = 0; i < group.length; i++) {
+                Format format = group.getTrackFormat(i);
+                int height = format.height;
+                if (height == targetHeight) {
+                    TrackSelectionOverride override =
+                            new TrackSelectionOverride(
+                                    group.getMediaTrackGroup(),
+                                    List.of(i)
+                            );
+                    TrackSelectionParameters parameters =
+                            exoPlayer.getTrackSelectionParameters()
+                                    .buildUpon()
+                                    .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                                    .setOverrideForType(override)
+                                    .build();
+                    exoPlayer.setTrackSelectionParameters(parameters);
+                    return;
+                }
+            }
+        }
+        if (trackSelector != null) {
+            int width = (int) msg.getWidth();
+            int height = (int) msg.getHeight();
+            DefaultTrackSelector.Parameters.Builder builder = trackSelector.buildUponParameters()
+                    .setMaxVideoSize(width, height)
+                    .setMinVideoSize(width, height);
+            trackSelector.setParameters(builder);
+        }
+    }
+
+    public List<VideoResolutionData> getVideoResolutions() {
+        List<VideoResolutionData> ret = new ArrayList<>();
+        if (trackSelector == null) {
+            return ret;
+        }
+        MappingTrackSelector.MappedTrackInfo mappedTrackInfo = trackSelector.getCurrentMappedTrackInfo();
+        if (mappedTrackInfo == null) {
+            return ret;
+        }
+        for (int rendererIndex = 0; rendererIndex < Objects.requireNonNull(mappedTrackInfo).getRendererCount(); rendererIndex++) {
+            if (mappedTrackInfo.getRendererType(rendererIndex) == C.TRACK_TYPE_VIDEO) {
+                TrackGroupArray trackGroups = mappedTrackInfo.getTrackGroups(rendererIndex);
+                for (int groupIndex = 0; groupIndex < trackGroups.length; groupIndex++) {
+                    TrackGroup trackGroup = trackGroups.get(groupIndex);
+                    for (int trackIndex = 0; trackIndex < trackGroup.length; trackIndex++) {
+                        Format format = trackGroup.getFormat(trackIndex);
+                        int width = format.width;
+                        int height = format.height;
+                        VideoResolutionData data = new VideoResolutionData((long) width, (long) height);
+                        ret.add(data);
+                    }
+                }
+            }
+        }
+        return ret;
+    }
+
+    public void changeDataSource(SetDataSourceMessage msg) {
+          if (VideoPlayerPlugin.applicationContext == null) {
+              return;
+          }
+        Context context = VideoPlayerPlugin.applicationContext;
+        String dataSource = msg.getUri();
+        String audioDataSource = msg.getAudioUri();
+        List<Map<String, String>> extraDatasource = msg.getExtraDatasource();
+        String formatHint = msg.getFormatHint();
+        Map<String, String> httpHeaders = msg.getHttpHeaders();
+        if (extraDatasource == null || extraDatasource.isEmpty()) {
+            if (dataSource.endsWith(".m3u8")) {
+                if (playerDataSource == null) {
+                    playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
+                }
+                MediaSource mediaSource = BuildDataSourceHelper.getHlsMediaSource(playerDataSource, dataSource);
+                exoPlayer.setMediaSource(mediaSource);
+            } else {
+                MediaItem mediaItem = new MediaItem.Builder()
+                        .setUri(dataSource)
+                        .build();
+                exoPlayer.setMediaItem(mediaItem);
+            }
+        } else {
+            playerDataSource = new PlayerDataSource(context, new DefaultBandwidthMeter.Builder(context).build());
+            MediaSource mediaSource = BuildDataSourceHelper.getMediaSource(playerDataSource, extraDatasource);
+            if (mediaSource != null) {
+                exoPlayer.setMediaSource(mediaSource, false);
+            }
+        }
+    }
+///
 }

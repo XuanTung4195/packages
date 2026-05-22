@@ -114,6 +114,8 @@ class AndroidVideoPlayer extends VideoPlayerPlatform {
       httpHeaders: httpHeaders,
       userAgent: userAgent,
       formatHint: formatHint,
+      audioUri: dataSource.audioUri, /// TUNGPX
+      extraDatasource: dataSource.extraDatasource, /// TUNGPX
     );
 
     final int playerId;
@@ -284,6 +286,27 @@ class AndroidVideoPlayer extends VideoPlayerPlatform {
       _ => null,
     };
   }
+
+
+  /// TUNGPX Change the data source of the player
+  @override
+  Future<void> changeDataSource(int playerId, DataSource dataSource) async {
+    await _playerWith(id: playerId).changeDataSource(dataSource);
+  }
+
+  @override
+  Future<void> setVideoResolution(int playerId, int width, int height) {
+    return _playerWith(id: playerId).setVideoResolution(VideoResolutionMessage(
+      width: width,
+      height: height,
+    ));
+  }
+
+  @override
+  Future<List<VideoResolution>> getVideoResolutions(int playerId) async {
+    return _playerWith(id: playerId).getVideoResolutions();
+  }
+
 }
 
 /// An instance of a video player, corresponding to a single player ID in
@@ -496,6 +519,42 @@ class _PlayerInstance {
     return <DurationRange>[
       DurationRange(Duration.zero, Duration(milliseconds: milliseconds)),
     ];
+  }
+
+  /// TUNGPX Change the data source of the player
+  Future<void> changeDataSource(DataSource dataSource) async {
+    String? uri;
+    Map<String, String> httpHeaders = <String, String>{};
+    switch (dataSource.sourceType) {
+      case DataSourceType.asset:
+      case DataSourceType.network:
+        uri = dataSource.uri;
+        httpHeaders = dataSource.httpHeaders;
+      case DataSourceType.file:
+        uri = dataSource.uri;
+        httpHeaders = dataSource.httpHeaders;
+      case DataSourceType.contentUri:
+        uri = dataSource.uri;
+    }
+    final message = SetDataSourceMessage(
+      uri: uri,
+      audioUri: dataSource.audioUri,
+      extraDatasource: dataSource.extraDatasource,
+      httpHeaders: httpHeaders,
+    );
+
+    await _api.changeDataSource(message);
+  }
+
+  Future<void> setVideoResolution(VideoResolutionMessage msg) {
+    return _api.setVideoResolution(msg);
+  }
+
+  Future<List<VideoResolution>> getVideoResolutions() async {
+    final List<VideoResolutionData?> res = await _api.getVideoResolutions();
+    return res.map((VideoResolutionData? e) {
+      return VideoResolution(e?.width ?? 0, e?.height ?? 0);
+    }).toList();
   }
 }
 
