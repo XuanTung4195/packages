@@ -21,10 +21,13 @@ import io.flutter.view.TextureRegistry;
 
 /// TUNGPX
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import android.net.Uri;
 import java.util.List;
 import io.flutter.plugins.videoplayer.SetDataSourceMessage;
 import io.flutter.plugins.videoplayer.HttpVideoAsset;
+//
 
 /** Android platform implementation of the VideoPlayerPlugin. */
 public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
@@ -36,6 +39,14 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
   ///  TUNGPX
   public static String preferredLanguage = null;
   public static Context applicationContext = null;
+  public static Map<Uri, String> playlistContentMap =
+  new LinkedHashMap<Uri, String>(5, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<Uri, String> eldest) {
+          return size() > 5;
+      }
+  };
+  ///
 
   /** Register this with the v2 embedding for the plugin to respond to lifecycle callbacks. */
   public VideoPlayerPlugin() {}
@@ -258,4 +269,14 @@ public class VideoPlayerPlugin implements FlutterPlugin, AndroidVideoPlayerApi {
           }
       }
   }
+  @Override
+  public String getHlsContent(String url) {
+    Uri uri = Uri.parse(url);
+    String content = VideoPlayerPlugin.playlistContentMap.get(uri);
+    if (content != null) {
+      return content;
+    }
+    return null;
+  }
+  ///
 }

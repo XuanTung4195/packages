@@ -163,6 +163,9 @@ abstract class AndroidVideoPlayerApi {
   void dispose(int playerId);
   void setMixWithOthers(bool mixWithOthers);
   String getLookupKeyForAsset(String asset, String? packageName);
+  /// TUNGPX
+  String? getHlsContent(String url);
+  ///
 }
 
 @HostApi()

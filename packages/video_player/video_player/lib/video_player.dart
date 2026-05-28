@@ -1119,6 +1119,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   static Future<int> enablePictureInPictureMode(String command, Map<String?, Object?>? data) async {
     return _videoPlayerPlatform.enablePictureInPicture(command, data);
   }
+
+  Future<String?> getHlsContent(String url) async {
+    return _videoPlayerPlatform.getHlsContent(url);
+  }
 }
 
 class _VideoAppLifeCycleObserver extends Object with WidgetsBindingObserver {

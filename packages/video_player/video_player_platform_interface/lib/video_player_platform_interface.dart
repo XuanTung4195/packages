@@ -210,6 +210,10 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   Future<Map?> customMethod(String command, Map<String?, Object?>? data, int playerId) async {
     return {};
   }
+
+  Future<String?> getHlsContent(String url) async {
+    return null;
+  }
   ///
 }
 

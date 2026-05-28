@@ -1049,6 +1049,8 @@ interface AndroidVideoPlayerApi {
   fun dispose(playerId: Long)
   fun setMixWithOthers(mixWithOthers: Boolean)
   fun getLookupKeyForAsset(asset: String, packageName: String?): String
+  /** TUNGPX */
+  fun getHlsContent(url: String): String?
 
   companion object {
     /** The codec used by AndroidVideoPlayerApi. */
@@ -1154,6 +1156,23 @@ interface AndroidVideoPlayerApi {
             val packageNameArg = args[1] as String?
             val wrapped: List<Any?> = try {
               listOf(api.getLookupKeyForAsset(assetArg, packageNameArg))
+            } catch (exception: Throwable) {
+              MessagesPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.video_player_android.AndroidVideoPlayerApi.getHlsContent$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val urlArg = args[0] as String
+            val wrapped: List<Any?> = try {
+              listOf(api.getHlsContent(urlArg))
             } catch (exception: Throwable) {
               MessagesPigeonUtils.wrapError(exception)
             }

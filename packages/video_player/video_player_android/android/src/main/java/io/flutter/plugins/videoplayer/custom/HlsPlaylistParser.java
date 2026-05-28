@@ -87,6 +87,7 @@ import java.util.stream.Collectors;
 import io.flutter.plugins.videoplayer.VideoPlayerPlugin;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayInputStream;
 //
 
 /** HLS playlists parsing logic. */
@@ -356,6 +357,20 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
     @Override
     public HlsPlaylist parse(Uri uri, InputStream inputStream) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        /// TUNGPX
+        if (uri.toString().contains("hls_variant")) {
+            // clone toàn bộ content
+            byte[] data = Util.toByteArray(inputStream);
+            // lấy string content
+            String content = new String(data, StandardCharsets.UTF_8);
+            VideoPlayerPlugin.playlistContentMap.put(uri, content);
+            // parse bằng reader mới
+            reader = new BufferedReader(
+                    new InputStreamReader(
+                            new ByteArrayInputStream(data),
+                            StandardCharsets.UTF_8));
+        }
+        ///
         Queue<String> extraLines = new ArrayDeque<>();
         MatcherCache matcherCache = new MatcherCache();
         String line;

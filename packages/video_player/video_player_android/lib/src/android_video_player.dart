@@ -307,6 +307,12 @@ class AndroidVideoPlayer extends VideoPlayerPlatform {
     return _playerWith(id: playerId).getVideoResolutions();
   }
 
+  @override
+  Future<String?> getHlsContent(String url) async {
+    return _api.getHlsContent(url);
+  }
+  ///
+
 }
 
 /// An instance of a video player, corresponding to a single player ID in
