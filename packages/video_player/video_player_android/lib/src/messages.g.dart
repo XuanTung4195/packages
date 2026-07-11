@@ -311,6 +311,52 @@ class AudioTrackChangedEvent extends PlatformVideoEvent {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+/// Sent when video tracks change.
+///
+/// This includes when the selected video track changes after calling selectVideoTrack.
+/// Corresponds to ExoPlayer's onTracksChanged.
+class VideoTrackChangedEvent extends PlatformVideoEvent {
+  VideoTrackChangedEvent({
+    this.selectedTrackId,
+  });
+
+  /// The ID of the newly selected video track, if any.
+  /// Will be null when auto quality selection is enabled.
+  String? selectedTrackId;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      selectedTrackId,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static VideoTrackChangedEvent decode(Object result) {
+    result as List<Object?>;
+    return VideoTrackChangedEvent(
+      selectedTrackId: result[0] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! VideoTrackChangedEvent || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(selectedTrackId, other.selectedTrackId);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+}
+
 /// Information passed to the platform view creation.
 class PlatformVideoViewCreationParams {
   PlatformVideoViewCreationParams({
@@ -358,6 +404,7 @@ class CreationOptions {
     this.formatHint,
     required this.httpHeaders,
     this.userAgent,
+    this.backBufferDurationMs,
     this.audioUri,
     this.extraDatasource,
   });
@@ -370,6 +417,8 @@ class CreationOptions {
 
   String? userAgent;
 
+  int? backBufferDurationMs;
+
   /// TUNGPX
   String? audioUri;
 
@@ -381,6 +430,7 @@ class CreationOptions {
       formatHint,
       httpHeaders,
       userAgent,
+      backBufferDurationMs,
       audioUri,
       extraDatasource,
     ];
@@ -396,8 +446,9 @@ class CreationOptions {
       formatHint: result[1] as PlatformVideoFormat?,
       httpHeaders: (result[2]! as Map<Object?, Object?>).cast<String, String>(),
       userAgent: result[3] as String?,
-      audioUri: result[4] as String?,
-      extraDatasource: (result[5] as List<Object?>?)?.cast<Map<String?, String?>?>(),
+      backBufferDurationMs: result[4] as int?,
+      audioUri: result[5] as String?,
+      extraDatasource: (result[6] as List<Object?>?)?.cast<Map<String?, String?>?>(),
     );
   }
 
@@ -410,7 +461,7 @@ class CreationOptions {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(uri, other.uri) && _deepEquals(formatHint, other.formatHint) && _deepEquals(httpHeaders, other.httpHeaders) && _deepEquals(userAgent, other.userAgent) && _deepEquals(audioUri, other.audioUri) && _deepEquals(extraDatasource, other.extraDatasource);
+    return _deepEquals(uri, other.uri) && _deepEquals(formatHint, other.formatHint) && _deepEquals(httpHeaders, other.httpHeaders) && _deepEquals(userAgent, other.userAgent) && _deepEquals(backBufferDurationMs, other.backBufferDurationMs) && _deepEquals(audioUri, other.audioUri) && _deepEquals(extraDatasource, other.extraDatasource);
   }
 
   @override
@@ -709,6 +760,129 @@ class NativeAudioTrackData {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+/// Raw video track data from ExoPlayer Format objects.
+class ExoPlayerVideoTrackData {
+  ExoPlayerVideoTrackData({
+    required this.groupIndex,
+    required this.trackIndex,
+    this.label,
+    required this.isSelected,
+    this.bitrate,
+    this.width,
+    this.height,
+    this.frameRate,
+    this.codec,
+  });
+
+  int groupIndex;
+
+  int trackIndex;
+
+  String? label;
+
+  bool isSelected;
+
+  int? bitrate;
+
+  int? width;
+
+  int? height;
+
+  double? frameRate;
+
+  String? codec;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      groupIndex,
+      trackIndex,
+      label,
+      isSelected,
+      bitrate,
+      width,
+      height,
+      frameRate,
+      codec,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static ExoPlayerVideoTrackData decode(Object result) {
+    result as List<Object?>;
+    return ExoPlayerVideoTrackData(
+      groupIndex: result[0]! as int,
+      trackIndex: result[1]! as int,
+      label: result[2] as String?,
+      isSelected: result[3]! as bool,
+      bitrate: result[4] as int?,
+      width: result[5] as int?,
+      height: result[6] as int?,
+      frameRate: result[7] as double?,
+      codec: result[8] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! ExoPlayerVideoTrackData || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(groupIndex, other.groupIndex) && _deepEquals(trackIndex, other.trackIndex) && _deepEquals(label, other.label) && _deepEquals(isSelected, other.isSelected) && _deepEquals(bitrate, other.bitrate) && _deepEquals(width, other.width) && _deepEquals(height, other.height) && _deepEquals(frameRate, other.frameRate) && _deepEquals(codec, other.codec);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+}
+
+/// Container for raw video track data from Android ExoPlayer.
+class NativeVideoTrackData {
+  NativeVideoTrackData({
+    this.exoPlayerTracks,
+  });
+
+  /// ExoPlayer-based tracks
+  List<ExoPlayerVideoTrackData>? exoPlayerTracks;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      exoPlayerTracks,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static NativeVideoTrackData decode(Object result) {
+    result as List<Object?>;
+    return NativeVideoTrackData(
+      exoPlayerTracks: (result[0] as List<Object?>?)?.cast<ExoPlayerVideoTrackData>(),
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! NativeVideoTrackData || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(exoPlayerTracks, other.exoPlayerTracks);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+}
+
 /// TUNGPX flutter pub run pigeon --input pigeons/messages.dart
 class SetDataSourceMessage {
   SetDataSourceMessage({
@@ -886,35 +1060,44 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is AudioTrackChangedEvent) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    }    else if (value is PlatformVideoViewCreationParams) {
+    }    else if (value is VideoTrackChangedEvent) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    }    else if (value is CreationOptions) {
+    }    else if (value is PlatformVideoViewCreationParams) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    }    else if (value is TexturePlayerIds) {
+    }    else if (value is CreationOptions) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    }    else if (value is PlaybackState) {
+    }    else if (value is TexturePlayerIds) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    }    else if (value is AudioTrackMessage) {
+    }    else if (value is PlaybackState) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    }    else if (value is ExoPlayerAudioTrackData) {
+    }    else if (value is AudioTrackMessage) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    }    else if (value is NativeAudioTrackData) {
+    }    else if (value is ExoPlayerAudioTrackData) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is SetDataSourceMessage) {
+    }    else if (value is NativeAudioTrackData) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    }    else if (value is VideoResolutionMessage) {
+    }    else if (value is ExoPlayerVideoTrackData) {
       buffer.putUint8(143);
       writeValue(buffer, value.encode());
-    }    else if (value is VideoResolutionData) {
+    }    else if (value is NativeVideoTrackData) {
       buffer.putUint8(144);
+      writeValue(buffer, value.encode());
+    }    else if (value is SetDataSourceMessage) {
+      buffer.putUint8(145);
+      writeValue(buffer, value.encode());
+    }    else if (value is VideoResolutionMessage) {
+      buffer.putUint8(146);
+      writeValue(buffer, value.encode());
+    }    else if (value is VideoResolutionData) {
+      buffer.putUint8(147);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -939,24 +1122,30 @@ class _PigeonCodec extends StandardMessageCodec {
       case 134:
         return AudioTrackChangedEvent.decode(readValue(buffer)!);
       case 135:
-        return PlatformVideoViewCreationParams.decode(readValue(buffer)!);
+        return VideoTrackChangedEvent.decode(readValue(buffer)!);
       case 136:
-        return CreationOptions.decode(readValue(buffer)!);
+        return PlatformVideoViewCreationParams.decode(readValue(buffer)!);
       case 137:
-        return TexturePlayerIds.decode(readValue(buffer)!);
+        return CreationOptions.decode(readValue(buffer)!);
       case 138:
-        return PlaybackState.decode(readValue(buffer)!);
+        return TexturePlayerIds.decode(readValue(buffer)!);
       case 139:
-        return AudioTrackMessage.decode(readValue(buffer)!);
+        return PlaybackState.decode(readValue(buffer)!);
       case 140:
-        return ExoPlayerAudioTrackData.decode(readValue(buffer)!);
+        return AudioTrackMessage.decode(readValue(buffer)!);
       case 141:
-        return NativeAudioTrackData.decode(readValue(buffer)!);
+        return ExoPlayerAudioTrackData.decode(readValue(buffer)!);
       case 142:
-        return SetDataSourceMessage.decode(readValue(buffer)!);
+        return NativeAudioTrackData.decode(readValue(buffer)!);
       case 143:
-        return VideoResolutionMessage.decode(readValue(buffer)!);
+        return ExoPlayerVideoTrackData.decode(readValue(buffer)!);
       case 144:
+        return NativeVideoTrackData.decode(readValue(buffer)!);
+      case 145:
+        return SetDataSourceMessage.decode(readValue(buffer)!);
+      case 146:
+        return VideoResolutionMessage.decode(readValue(buffer)!);
+      case 147:
         return VideoResolutionData.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -1371,6 +1560,66 @@ class VideoPlayerInstanceApi {
     )
     ;
     return (pigeonVar_replyValue! as List<Object?>).cast<VideoResolutionData>();
+  }
+
+  ///
+  /// Gets the available video tracks for the video.
+  Future<NativeVideoTrackData> getVideoTracks() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.video_player_android.VideoPlayerInstanceApi.getVideoTracks$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as NativeVideoTrackData;
+  }
+
+  /// Selects which video track is chosen for playback from its [groupIndex] and [trackIndex].
+  Future<void> selectVideoTrack(int groupIndex, int trackIndex) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.video_player_android.VideoPlayerInstanceApi.selectVideoTrack$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[groupIndex, trackIndex]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Enables automatic video quality selection, allowing the player to adaptively
+  /// switch between available video tracks based on network conditions.
+  Future<void> enableAutoVideoQuality() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.video_player_android.VideoPlayerInstanceApi.enableAutoVideoQuality$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 }
 

@@ -7,8 +7,7 @@ import 'package:pigeon/pigeon.dart';
 @ConfigurePigeon(
   PigeonOptions(
     dartOut: 'lib/src/messages.g.dart',
-    kotlinOut:
-        'android/src/main/kotlin/io/flutter/plugins/videoplayer/Messages.kt',
+    kotlinOut: 'android/src/main/kotlin/io/flutter/plugins/videoplayer/Messages.kt',
     kotlinOptions: KotlinOptions(package: 'io.flutter.plugins.videoplayer'),
     copyrightHeader: 'pigeons/copyright.txt',
   ),
@@ -60,6 +59,16 @@ class AudioTrackChangedEvent extends PlatformVideoEvent {
   late final String? selectedTrackId;
 }
 
+/// Sent when video tracks change.
+///
+/// This includes when the selected video track changes after calling selectVideoTrack.
+/// Corresponds to ExoPlayer's onTracksChanged.
+class VideoTrackChangedEvent extends PlatformVideoEvent {
+  /// The ID of the newly selected video track, if any.
+  /// Will be null when auto quality selection is enabled.
+  late final String? selectedTrackId;
+}
+
 /// Information passed to the platform view creation.
 class PlatformVideoViewCreationParams {
   const PlatformVideoViewCreationParams({required this.playerId});
@@ -73,6 +82,7 @@ class CreationOptions {
   PlatformVideoFormat? formatHint;
   Map<String, String> httpHeaders;
   String? userAgent;
+  int? backBufferDurationMs;
   /// TUNGPX
   String? audioUri;
   List<Map<String?, String?>?>? extraDatasource;
@@ -152,6 +162,39 @@ class NativeAudioTrackData {
   List<ExoPlayerAudioTrackData>? exoPlayerTracks;
 }
 
+/// Raw video track data from ExoPlayer Format objects.
+class ExoPlayerVideoTrackData {
+  ExoPlayerVideoTrackData({
+    required this.groupIndex,
+    required this.trackIndex,
+    this.label,
+    required this.isSelected,
+    this.bitrate,
+    this.width,
+    this.height,
+    this.frameRate,
+    this.codec,
+  });
+
+  int groupIndex;
+  int trackIndex;
+  String? label;
+  bool isSelected;
+  int? bitrate;
+  int? width;
+  int? height;
+  double? frameRate;
+  String? codec;
+}
+
+/// Container for raw video track data from Android ExoPlayer.
+class NativeVideoTrackData {
+  NativeVideoTrackData({this.exoPlayerTracks});
+
+  /// ExoPlayer-based tracks
+  List<ExoPlayerVideoTrackData>? exoPlayerTracks;
+}
+
 @HostApi()
 abstract class AndroidVideoPlayerApi {
   void initialize();
@@ -205,6 +248,15 @@ abstract class VideoPlayerInstanceApi {
   void setVideoResolution(VideoResolutionMessage msg);
   List<VideoResolutionData> getVideoResolutions();
   ///
+  /// Gets the available video tracks for the video.
+  NativeVideoTrackData getVideoTracks();
+
+  /// Selects which video track is chosen for playback from its [groupIndex] and [trackIndex].
+  void selectVideoTrack(int groupIndex, int trackIndex);
+
+  /// Enables automatic video quality selection, allowing the player to adaptively
+  /// switch between available video tracks based on network conditions.
+  void enableAutoVideoQuality();
 }
 
 @EventChannelApi()

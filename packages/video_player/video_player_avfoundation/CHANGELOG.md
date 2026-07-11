@@ -1,3 +1,17 @@
+## 2.11.0
+
+* Implements `setPreventsDisplaySleepDuringVideoPlayback` using
+  `AVPlayer.preventsDisplaySleepDuringVideoPlayback`.
+
+## 2.10.0
+
+* Implements `getVideoTracks()` and `selectVideoTrack()` methods for video track (quality) selection using AVFoundation.
+* Video track selection requires iOS 15+ / macOS 12+ for HLS streams.
+
+## 2.9.7
+
+* Forces tone-mapping to SDR on iOS to prevent washed-out HDR video playback.
+
 ## 2.9.6
 
 * Adds a Swift version to fix a potential build issue when using CocoaPods.
