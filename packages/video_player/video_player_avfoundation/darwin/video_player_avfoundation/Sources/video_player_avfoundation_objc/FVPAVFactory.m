@@ -157,8 +157,8 @@
             item.preferredMaximumResolution = CGSizeMake(_width, _height);
         }
     }
-    // Giới hạn buffer forward ~50s
-    item.preferredForwardBufferDuration = 50.0;
+    // Giới hạn buffer forward ~60s
+    item.preferredForwardBufferDuration = 60.0;
   return [[FVPDefaultAVPlayerItem alloc]
       initWithPlayerItem: item];
 }
