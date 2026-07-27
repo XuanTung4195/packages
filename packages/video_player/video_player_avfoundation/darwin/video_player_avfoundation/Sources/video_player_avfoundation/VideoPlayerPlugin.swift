@@ -187,7 +187,7 @@ private func _showInPipWhenReady(_ player: FVPVideoPlayer) {
        !pipManager!.pipEnabled ||
        pipManager!.pipController == nil ||
        !pipManager!.pipController!.isPictureInPictureActive ||
-       !mainPlayers.contains(where: { $0 === player }) {
+       mainPlayers.last !== player {
         return
     }
     if player.getAVPlayerLayer() == nil {
@@ -195,9 +195,14 @@ private func _showInPipWhenReady(_ player: FVPVideoPlayer) {
     }
     let avPlayer = player.player
     if avPlayer.currentItem?.status == .readyToPlay {
+        let wasPlaying = avPlayer.rate > 0
         player.getAVPlayerLayer()?.player = nil
         player.setEnableFrameUpdate(false)
         pipManager!.setCurrentPlayer(player)
+        if wasPlaying {
+            avPlayer.pause()
+            avPlayer.play()
+        }
         return
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self, weak player] in
