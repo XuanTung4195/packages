@@ -108,7 +108,7 @@ const Duration _kBaseSettleDuration = Duration(milliseconds: 246);
 // when it's supported. https://github.com/dart-lang/dartdoc/issues/4123
 /// {@macro material_ui.dartpad_guide}
 ///
-/// {@example /example/lib/drawer/drawer.0.dart}
+/// {@example /example/lib/drawer/drawer.0.dart#body}
 ///
 /// </callout-box>
 ///
@@ -120,7 +120,7 @@ const Duration _kBaseSettleDuration = Duration(milliseconds: 246);
 // when it's supported. https://github.com/dart-lang/dartdoc/issues/4123
 /// {@macro material_ui.dartpad_guide}
 ///
-/// {@example /example/lib/navigation_drawer/navigation_drawer.0.dart}
+/// {@example /example/lib/navigation_drawer/navigation_drawer.0.dart#body}
 ///
 /// </callout-box>
 ///
@@ -250,7 +250,7 @@ class Drawer extends StatelessWidget {
   ///    value is used.
   final String? semanticLabel;
 
-  /// {@macro flutter.material.Material.clipBehavior}
+  /// {@macro cupertino_ui.Material.clipBehavior}
   ///
   /// The [clipBehavior] argument specifies how to clip the drawer's [shape].
   ///
@@ -372,7 +372,7 @@ class DrawerController extends StatefulWidget {
   /// If false, tapping the barrier will not dismiss the drawer.
   final bool drawerBarrierDismissible;
 
-  /// {@template flutter.material.DrawerController.dragStartBehavior}
+  /// {@template material_ui.DrawerController.dragStartBehavior}
   /// Determines the way that drag start behavior is handled.
   ///
   /// If set to [DragStartBehavior.start], the drag behavior used for opening

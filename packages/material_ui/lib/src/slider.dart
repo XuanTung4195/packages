@@ -88,7 +88,7 @@ enum SliderInteraction {
 // when it's supported. https://github.com/dart-lang/dartdoc/issues/4123
 /// {@macro material_ui.dartpad_guide}
 ///
-/// {@example /example/lib/slider/slider.0.dart}
+/// {@example /example/lib/slider/slider.0.dart#body}
 ///
 /// </callout-box>
 ///
@@ -101,7 +101,7 @@ enum SliderInteraction {
 // when it's supported. https://github.com/dart-lang/dartdoc/issues/4123
 /// {@macro material_ui.dartpad_guide}
 ///
-/// {@example /example/lib/slider/slider.1.dart}
+/// {@example /example/lib/slider/slider.1.dart#body}
 ///
 /// </callout-box>
 ///
@@ -521,7 +521,7 @@ class Slider extends StatefulWidget {
   /// to [ColorScheme.primary] with an opacity of 0.12.
   final WidgetStateProperty<Color?>? overlayColor;
 
-  /// {@template flutter.material.slider.mouseCursor}
+  /// {@template material_ui.slider.mouseCursor}
   /// The cursor for a mouse pointer when it enters or is hovering over the
   /// widget.
   ///

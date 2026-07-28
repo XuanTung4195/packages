@@ -81,7 +81,7 @@ const List<double> _kDisabledDarkGradientOpacities = <double>[0.08, 0.14];
 // when it's supported. https://github.com/dart-lang/dartdoc/issues/4123
 /// {@macro cupertino_ui.dartpad_guide}
 ///
-/// {@example /example/lib/checkbox/cupertino_checkbox.0.dart}
+/// {@example /example/lib/checkbox/cupertino_checkbox.0.dart#body}
 ///
 /// </callout-box>
 ///
@@ -199,7 +199,7 @@ class CupertinoCheckbox extends StatefulWidget {
   /// Defaults to [CupertinoColors.activeBlue].
   final Color? activeColor;
 
-  /// {@template flutter.cupertino.CupertinoCheckbox.fillColor}
+  /// {@template cupertino_ui.CupertinoCheckbox.fillColor}
   /// The color used to fill this checkbox.
   ///
   /// Resolves in the following states:
